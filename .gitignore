@@ -1,0 +1,35 @@
+# ---- per PC
+studio.config.json
+apoio_downloads.json
+node_modules/
+__pycache__/
+*.pyc
+
+# ---- client data never goes to git (it lives in each client's folder)
+clients/*
+!clients/_template/
+projects/
+
+# ---- renders and scratch
+arsenal.html
+out/
+audio/
+*.aep
+*.aepx
+*.mp4
+*.mov
+*.wav
+
+# ---- third-party skills: install.ps1 restores them into .agents/skills from skills-lock.json
+#      (npx skills experimental_install) and links them; they keep their authors' licenses, so they are not vendored
+.agents/
+.claude/skills/*
+!.claude/skills/after-handoff/
+!.claude/skills/decupagem/
+!.claude/skills/estudo-final/
+!.claude/skills/imagens-apoio/
+!.claude/skills/motion-refs/
+!.claude/skills/novo-cliente/
+!.claude/skills/sfx/
+!.claude/skills/storyboard/
+.claude/settings.local.json

@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="pt">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Revisão de SFX</title>
+<style>
+:root {
+  --bg: #f4f2ee; --card: #ffffff; --ink: #1b1b1b; --mute: #6d6a65; --line: #e3dfd8;
+  --ok: #1f8a4c; --ok-bg: #e3f3ea; --no: #b3402f; --no-bg: #f7e5e1; --acc: #2f5fd0; --wave: #c9c3b8; --wave-on: #2f5fd0;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #151515; --card: #1f1f1f; --ink: #ecebe8; --mute: #9b978f; --line: #2e2d2b;
+          --ok: #5cc98a; --ok-bg: #1c3326; --no: #ef8a78; --no-bg: #3a221d; --acc: #8eaaf5; --wave: #45423d; --wave-on: #8eaaf5; }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+header { position: sticky; top: 0; z-index: 2; background: var(--bg); border-bottom: 1px solid var(--line); padding: 14px 20px; }
+h1 { font-size: 19px; margin: 0 0 4px; }
+.sub { color: var(--mute); font-size: 13px; }
+nav { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+nav a { font-size: 12px; padding: 3px 9px; border: 1px solid var(--line); border-radius: 99px; color: var(--ink); text-decoration: none; background: var(--card); }
+nav a.done { border-color: var(--ok); color: var(--ok); }
+main { max-width: 1060px; margin: 0 auto; padding: 18px 16px 80px; }
+section { margin: 0 0 26px; }
+h2 { font-size: 16px; margin: 0; }
+.mhead { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
+.mhead .sub { max-width: 640px; }
+.row { display: grid; grid-template-columns: 44px 1fr 160px 150px; gap: 12px; align-items: center; background: var(--card);
+       border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; margin-bottom: 6px; }
+.row.ok { border-color: var(--ok); background: var(--ok-bg); }
+.row.nao { opacity: .55; }
+.play { width: 36px; height: 36px; border-radius: 50%; border: 0; background: var(--acc); color: #fff; cursor: pointer; font-size: 14px; }
+.name { font-weight: 600; overflow-wrap: anywhere; }
+.meta { color: var(--mute); font-size: 12px; }
+.tag { display: inline-block; font-size: 11px; padding: 0 6px; border-radius: 4px; border: 1px solid var(--line); margin-right: 4px; color: var(--mute); }
+.tag.ed { border-color: var(--acc); color: var(--acc); }
+canvas { width: 160px; height: 34px; display: block; }
+.btns { display: flex; gap: 6px; justify-content: flex-end; }
+.btns button { border: 1px solid var(--line); background: var(--card); color: var(--ink); border-radius: 8px; padding: 6px 12px; cursor: pointer; font-size: 13px; }
+.btns button.on.okb { background: var(--ok); border-color: var(--ok); color: #fff; }
+.btns button.on.nob { background: var(--no); border-color: var(--no); color: #fff; }
+table { width: 100%; border-collapse: collapse; background: var(--card); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+td, th { padding: 8px 10px; border-bottom: 1px solid var(--line); text-align: left; font-size: 13px; }
+select, input[type=text] { font: inherit; padding: 4px 6px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--ink); }
+input[type=text] { width: 100%; }
+.saved { position: fixed; right: 16px; bottom: 16px; background: var(--ink); color: var(--bg); padding: 6px 12px; border-radius: 8px; font-size: 13px; opacity: 0; transition: opacity .2s; }
+.saved.show { opacity: .92; }
+@media (max-width: 720px) {
+  .row { grid-template-columns: 44px 1fr; }
+  canvas { width: 100%; grid-column: 1 / -1; }
+  .btns { grid-column: 1 / -1; justify-content: flex-start; }
+}
+</style>
+</head>
+<body>
+<header>
+  <h1>Revisão de SFX por movimento</h1>
+  <div class="sub">Ouça cada som e marque <b>ok</b> ou <b>não</b>. Só os sons com ok entram num plano de som; nada é escolhido sem a sua aprovação.
+    Atalhos: clique no ▶ (ou na onda) para tocar. As marcas são salvas na hora.</div>
+  <nav id="nav"></nav>
+</header>
+<main>
+  <section id="lic">
+    <div class="mhead"><h2>Licença dos packs</h2>
+      <div class="sub">Cada pack pode ser usado em vídeos entregues a clientes? <b>não</b> tira o pack de todos os planos; <b>?</b> deixa usar, com aviso no plano.</div></div>
+    <table><thead><tr><th>Pack</th><th>Sons</th><th>Licenciado para clientes?</th><th>Nota (de onde veio, tipo de licença)</th></tr></thead><tbody id="licbody"></tbody></table>
+  </section>
+  <div id="movs"></div>
+</main>
+<div class="saved" id="saved">salvo</div>
+<script>
+let D = null, audio = new Audio(), playing = null;
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+function flash() { const s = $('#saved'); s.classList.add('show'); setTimeout(() => s.classList.remove('show'), 900); }
+async function post(url, body) {
+  const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  if (r.ok) flash(); else alert('não salvou (' + r.status + ')');
+  return r.ok;
+}
+function wave(cv, hex, prog) {
+  const css = getComputedStyle(document.documentElement), dpr = window.devicePixelRatio || 1;
+  const w = cv.clientWidth || 160, h = cv.clientHeight || 34;
+  cv.width = w * dpr; cv.height = h * dpr;
+  const c = cv.getContext('2d'); c.scale(dpr, dpr); c.clearRect(0, 0, w, h);
+  const v = []; for (let i = 0; i + 1 < hex.length; i += 2) v.push(parseInt(hex.substr(i, 2), 16) / 255);
+  if (!v.length) return;
+  const bw = w / v.length;
+  v.forEach((a, i) => { c.fillStyle = (i / v.length) <= prog ? css.getPropertyValue('--wave-on') : css.getPropertyValue('--wave');
+    const bh = Math.max(1, a * (h - 2)); c.fillRect(i * bw, (h - bh) / 2, Math.max(1, bw - 0.6), bh); });
+}
+function play(id) {
+  if (playing === id && !audio.paused) { audio.pause(); return; }
+  audio.src = '/audio/' + id; audio.currentTime = 0; audio.play(); playing = id;
+}
+audio.ontimeupdate = () => {
+  const cv = document.querySelector(`canvas[data-id="${playing}"]`);
+  if (cv && audio.duration) wave(cv, cv.dataset.w, audio.currentTime / audio.duration);
+};
+audio.onended = () => { const cv = document.querySelector(`canvas[data-id="${playing}"]`); if (cv) wave(cv, cv.dataset.w, 0); };
+function fmt(f) {
+  if (!f) return '';
+  return `ataque ${(f.ataque ?? 0).toFixed(2)} s · cauda ${(f.cauda ?? 0).toFixed(2)} s · brilho ${f.brilho ?? '-'} Hz · grave ${Math.round((f.grave ?? 0) * 100)}% · ${f.lufs_m ?? '-'} LUFS`;
+}
+function render() {
+  $('#licbody').innerHTML = Object.entries(D.licencas).map(([k, v]) => `<tr><td>${esc(k)}</td><td>${v.n}</td>
+    <td><select data-pack="${esc(k)}">${['?', 'sim', 'nao'].map(o => `<option value="${o}" ${v.v === o ? 'selected' : ''}>${o === 'nao' ? 'não' : o}</option>`).join('')}</select></td>
+    <td><input type="text" data-nota="${esc(k)}" value="${esc(v.nota)}" placeholder="ex.: comprado em ..., licença comercial"></td></tr>`).join('');
+  document.querySelectorAll('select[data-pack]').forEach(s => s.onchange = () => {
+    const k = s.dataset.pack; post('/licenca', { pack: k, v: s.value, nota: document.querySelector(`input[data-nota="${CSS.escape(k)}"]`).value }); });
+  document.querySelectorAll('input[data-nota]').forEach(i => i.onchange = () => {
+    const k = i.dataset.nota; post('/licenca', { pack: k, v: document.querySelector(`select[data-pack="${CSS.escape(k)}"]`).value, nota: i.value }); });
+  $('#nav').innerHTML = '<a href="#lic">licenças</a>' + D.movimentos.map(m => {
+    const ok = m.itens.filter(i => i.v === 'ok').length;
+    return `<a href="#m-${m.id}" class="${ok ? 'done' : ''}">${esc(m.nome.split(' (')[0].split(' / ')[0])} ${ok ? '· ' + ok : ''}</a>`; }).join('');
+  $('#movs').innerHTML = D.movimentos.map(m => `<section id="m-${m.id}"><div class="mhead"><h2>${esc(m.nome)} <span class="tag">${m.id}</span></h2>
+      <div class="sub">Quando: ${esc(m.eventos)} · ${m.pool} sons no grupo, ${m.itens.length} para ouvir</div></div>
+      ${m.itens.map(i => `<div class="row ${i.v || ''}" data-row="${m.id}:${i.id}">
+        <button class="play" data-play="${i.id}" title="tocar">▶</button>
+        <div><div class="name">${esc(i.n)}</div>
+          <div class="meta"><span class="tag">${esc(i.intensidade)}</span>${i.editor ? '<span class="tag ed">usado pelo editor</span>' : ''}
+            ${(i.d ?? 0).toFixed(2)} s · ${esc(i.k)} · ${esc(i.area)}</div>
+          <div class="meta">${fmt(i.f)}</div></div>
+        <canvas data-id="${i.id}" data-w="${i.w}" data-play="${i.id}"></canvas>
+        <div class="btns"><button class="okb ${i.v === 'ok' ? 'on' : ''}" data-mark="ok" data-mov="${m.id}" data-id="${i.id}">ok</button>
+          <button class="nob ${i.v === 'nao' ? 'on' : ''}" data-mark="nao" data-mov="${m.id}" data-id="${i.id}">não</button></div>
+      </div>`).join('')}</section>`).join('');
+  document.querySelectorAll('canvas[data-id]').forEach(cv => wave(cv, cv.dataset.w, 0));
+  document.querySelectorAll('[data-play]').forEach(b => b.onclick = () => play(b.dataset.play));
+  document.querySelectorAll('[data-mark]').forEach(b => b.onclick = async () => {
+    const m = D.movimentos.find(x => x.id === b.dataset.mov), it = m.itens.find(x => x.id === b.dataset.id);
+    const v = it.v === b.dataset.mark ? null : b.dataset.mark;
+    if (await post('/marcar', { mov: m.id, id: it.id, v })) { it.v = v; const y = scrollY; render(); scrollTo(0, y); }
+  });
+}
+fetch('/dados').then(r => r.json()).then(d => { D = d; render(); });
+</script>
+</body>
+</html>

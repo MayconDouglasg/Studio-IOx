@@ -1,0 +1,22 @@
+# motion-studio — Python packages (install: python -m pip install --user -r requirements.txt)
+# Tested 2026-11-16 on Python 3.14.7, Windows 11, RTX 4060:
+# numpy 2.5.4 · scipy 1.18.1 · librosa 1.0.1 · soundfile 0.14.0 · scikit-learn 1.9.1
+# faster-whisper 1.2.1 · ctranslate2 4.9.0 · nvidia-cublas-cu12 12.9.2.10 · nvidia-cudnn-cu12 9.28.1.4 · nvidia-cuda-nvrtc-cu12 12.9.86
+numpy>=2.0
+scipy>=1.13
+librosa>=0.10
+soundfile>=0.12
+scikit-learn>=1.5
+faster-whisper>=1.1
+ctranslate2>=4.5
+# CUDA runtime for the transcription on an NVIDIA GPU (no CUDA toolkit install needed)
+nvidia-cublas-cu12
+nvidia-cudnn-cu12>=9,<10
+nvidia-cuda-nvrtc-cu12
+# imagens-apoio (tools/apoio.py): stock APIs, script PDFs, contact sheet; CLIP only for --clip (torch with CUDA: pytorch.org)
+requests>=2.31
+pypdf>=4
+pillow>=10
+# open_clip_torch   (optional, --clip)
+# reference videos (studio.py refs): yt-dlp + yt-dlp-ejs for YouTube (needs node or deno on PATH)
+yt-dlp[default]>=2026.10.26

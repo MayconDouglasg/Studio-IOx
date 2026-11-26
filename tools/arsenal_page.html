@@ -1,0 +1,764 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Arsenal</title>
+<style>
+@font-face{font-family:Archivo;src:url(data:font/woff2;base64,/*FONT_ARCHIVO*/) format('woff2');font-weight:100 900;font-stretch:62% 125%}
+@font-face{font-family:StudioMono;src:url(data:font/woff2;base64,/*FONT_MONO*/) format('woff2');font-weight:100 800}
+:root{
+  --bg:#e9ebef; --panel:#f8f9fb; --raise:#ffffff; --sunk:#e0e3e9; --line:#cdd2db; --soft:#dde1e8; --ink:#1b1e25; --mute:#5b6270;
+  --track:#d5d9e1; --head:#d1460f;
+  --iris:#5257d4; --caribe:#0f8c78; --manga:#b06900; --rosa:#bd3f78; --floresta:#3c8537; --lavanda:#8366d6;
+  --ok:#2c8543; --bad:#c23a3a; --clipfill:20%; --shadow:0 1px 0 rgba(20,24,33,.04),0 6px 18px -10px rgba(20,24,33,.25);
+  --f-ui:"Segoe UI Variable Text","Segoe UI",system-ui,sans-serif;
+  --f-d:Archivo,"Bahnschrift","Segoe UI",sans-serif; --f-m:StudioMono,Consolas,monospace;
+  --r:10px;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#17191e; --panel:#1f2229; --raise:#252932; --sunk:#131519; --line:#343944; --soft:#2b2f38; --ink:#e8eaef; --mute:#9aa1ae;
+  --track:#2a2e37; --head:#ff7a45;
+  --iris:#8c8fff; --caribe:#3ccfb3; --manga:#f2a93b; --rosa:#ee7fb0; --floresta:#73c46c; --lavanda:#b9a3f0;
+  --ok:#5fcf7a; --bad:#ff6b6b; --clipfill:24%; --shadow:0 1px 0 rgba(0,0,0,.2),0 10px 24px -14px rgba(0,0,0,.7);
+}}
+:root[data-theme="dark"]{
+  --bg:#17191e; --panel:#1f2229; --raise:#252932; --sunk:#131519; --line:#343944; --soft:#2b2f38; --ink:#e8eaef; --mute:#9aa1ae;
+  --track:#2a2e37; --head:#ff7a45;
+  --iris:#8c8fff; --caribe:#3ccfb3; --manga:#f2a93b; --rosa:#ee7fb0; --floresta:#73c46c; --lavanda:#b9a3f0;
+  --ok:#5fcf7a; --bad:#ff6b6b; --clipfill:24%; --shadow:0 1px 0 rgba(0,0,0,.2),0 10px 24px -14px rgba(0,0,0,.7);
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;scroll-padding-top:76px}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 var(--f-ui)}
+a{color:inherit}
+button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--head);outline-offset:2px}
+.wrap{max-width:1200px;margin:0 auto;padding:0 28px}
+@media (max-width:640px){.wrap{padding:0 16px}}
+.code{font:12.5px var(--f-m);background:var(--sunk);border-radius:4px;padding:1px 6px}
+mark.ph{background:color-mix(in srgb,var(--manga) 26%,transparent);color:inherit;border-radius:3px;padding:0 3px;font-weight:600}
+
+/* ---------- bar */
+.bar{position:sticky;top:0;z-index:20;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.bar .wrap{display:flex;align-items:center;gap:10px 22px;min-height:60px;flex-wrap:wrap;padding-top:8px;padding-bottom:8px}
+.brand{font:800 30px/1 var(--f-d);font-stretch:66%;letter-spacing:-.3px;text-decoration:none;display:flex;align-items:center;gap:9px}
+.brand i{width:12px;height:22px;background:var(--head);border-radius:2px;display:block}
+nav.jump{display:flex;gap:2px;font-size:14px}
+nav.jump a{text-decoration:none;color:var(--mute);padding:6px 9px;border-radius:6px}
+nav.jump a:hover{color:var(--ink);background:var(--soft)}
+.ctx{margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.field{display:flex;align-items:center;gap:6px;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:0 4px 0 10px;font-size:13px;color:var(--mute)}
+.field select{border:0;background:transparent;color:var(--ink);font-weight:600;padding:6px 4px;max-width:210px;cursor:pointer}
+.field select option{background:var(--panel);color:var(--ink)}
+.meta{display:flex;gap:8px;align-items:center}
+.tabs{display:flex;background:var(--sunk);border:1px solid var(--line);border-radius:9px;padding:3px;gap:2px}
+.tabs button{border:0;background:transparent;border-radius:6px;padding:5px 14px;cursor:pointer;font-size:14px;font-weight:600;color:var(--mute)}
+.tabs button[aria-selected="true"]{background:var(--raise);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.12)}
+.ctx[hidden]{display:none}
+.viewnote{margin:22px 0 0;color:var(--mute);font-size:14px}
+#v-geral>section:first-of-type{padding-top:22px}
+.mode{font-size:13px;padding:5px 10px;border-radius:999px;border:1px solid var(--line);color:var(--mute);white-space:nowrap}
+.mode.on{border-color:color-mix(in srgb,var(--ok) 60%,transparent);color:var(--ok)}
+.btn{border:1px solid var(--line);background:var(--raise);border-radius:7px;padding:6px 12px;cursor:pointer;font-size:14px;white-space:nowrap}
+.btn:hover{border-color:var(--mute)}
+.btn.primary{background:var(--ink);color:var(--bg);border-color:var(--ink);font-weight:600}
+.btn.primary:hover{opacity:.9}
+.btn.small{padding:3px 10px;font-size:13px}
+.btn.ghost{background:transparent}
+.copied{color:var(--ok)!important;border-color:var(--ok)!important;background:var(--raise)!important}
+
+section{padding:44px 0 6px}
+.head{display:flex;justify-content:space-between;align-items:flex-end;gap:8px 24px;flex-wrap:wrap;margin:0 0 18px}
+h2{font:760 36px/1 var(--f-d);font-stretch:72%;margin:0}
+.sub{color:var(--mute);margin:6px 0 0;max-width:68ch}
+.head .aside{color:var(--mute);font-size:13.5px;max-width:44ch}
+
+/* ---------- now */
+.now{padding-top:28px}
+.hero{background:var(--panel);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);overflow:hidden}
+.hero-top{padding:22px 26px 18px;display:flex;justify-content:space-between;gap:12px 24px;flex-wrap:wrap;align-items:flex-end}
+.who{font-size:14px;color:var(--mute);margin:0 0 4px}
+.epname{font:820 64px/.92 var(--f-d);font-stretch:64%;letter-spacing:-.4px;margin:0;overflow-wrap:anywhere}
+.epmeta{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.tag{font-size:12.5px;border:1px solid var(--line);border-radius:999px;padding:3px 10px;color:var(--mute);background:var(--raise)}
+.tag.warn{border-color:color-mix(in srgb,var(--manga) 70%,transparent);color:var(--ink);background:color-mix(in srgb,var(--manga) 12%,var(--raise))}
+.tag.good{border-color:color-mix(in srgb,var(--ok) 60%,transparent);color:var(--ok)}
+
+.prog{position:relative;display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px;padding:0 26px 22px}
+.prog .s{--c:var(--iris);background:var(--track);border-radius:5px;padding:8px 9px 7px;min-height:56px;position:relative;display:flex;flex-direction:column;gap:2px}
+.prog .s::before{content:"";position:absolute;left:0;right:0;top:0;height:4px;border-radius:5px 5px 0 0;background:transparent}
+.prog .s b{font:700 15px/1.05 var(--f-d);font-stretch:74%;color:var(--mute)}
+.prog .s small{font:11.5px var(--f-m);color:var(--mute)}
+.prog .s.on{background:color-mix(in srgb,var(--c) var(--clipfill),var(--panel))}
+.prog .s.on::before{background:var(--c)}
+.prog .s.on b{color:var(--ink)}
+.prog .s.man{--c:var(--lavanda)}
+.prog .s.next{background:transparent;box-shadow:inset 0 0 0 2px var(--head)}
+.prog .s.next b{color:var(--ink)}
+.prog .s.next small{color:var(--head)}
+
+.hero-body{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);border-top:1px solid var(--line)}
+.step{padding:22px 26px 24px}
+.step .k{font:600 13px var(--f-m);color:var(--head);margin:0 0 6px}
+.step h3{font:760 30px/1 var(--f-d);font-stretch:72%;margin:0 0 8px}
+.step p{margin:0 0 14px;color:var(--mute);max-width:60ch}
+.ask{background:var(--sunk);border:1px solid var(--line);border-radius:10px;padding:14px 16px;display:flex;gap:12px;align-items:flex-start;margin:0 0 10px}
+.ask q{flex:1;quotes:none;font-size:15px;line-height:1.45}
+.ask .btn{flex:none}
+.hint{font-size:13px;color:var(--mute);margin:0}
+.files{padding:22px 26px 24px;border-left:1px solid var(--line);background:color-mix(in srgb,var(--panel) 60%,var(--bg))}
+.files h4,.mini-h{font:700 15px/1 var(--f-ui);margin:0 0 12px;color:var(--mute)}
+.frow{display:flex;align-items:center;gap:10px;padding:7px 0;border-top:1px solid var(--soft);font-size:14px}
+.frow:first-of-type{border-top:0}
+.frow span{flex:1;min-width:0;overflow-wrap:anywhere}
+.frow span small{display:block;font:11.5px var(--f-m);color:var(--mute)}
+.batch{border-top:1px solid var(--line);padding:6px 26px 18px}
+.brow{display:grid;grid-template-columns:minmax(0,160px) minmax(0,220px) minmax(0,1fr) auto;gap:10px 16px;align-items:center;padding:10px 0;border-top:1px solid var(--soft)}
+.brow:first-child{border-top:0}
+.brow .nm{font:13px var(--f-m);overflow-wrap:anywhere}
+.brow .nx{font-size:14px;color:var(--mute)}
+.brow .nx b{color:var(--ink);font-weight:600}
+.empty-hero{padding:34px 26px}
+.empty-hero h3{font:760 34px/1 var(--f-d);font-stretch:72%;margin:0 0 8px}
+
+/* strip (small progress) */
+.strip{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
+.strip i{height:10px;background:var(--track);border-radius:2px}
+.strip i.on{background:var(--iris)}
+.strip i.man.on{background:var(--lavanda)}
+.strip i.nx{box-shadow:inset 0 0 0 2px var(--head);background:transparent}
+
+/* ---------- timeline */
+.tl{background:var(--panel);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);overflow:hidden}
+.tl-in{padding:14px 16px 0}
+.row{display:grid;grid-template-columns:40px minmax(0,1fr);gap:0}
+.lane{font:600 11.5px var(--f-m);color:var(--mute);display:flex;align-items:center;justify-content:center}
+.ruler,.clips{display:flex;gap:3px}
+.ruler{height:26px;align-items:flex-end}
+.ruler span{flex:var(--w,1) 1 0;min-width:0;font:11.5px var(--f-m);color:var(--mute);border-left:1px solid var(--line);padding:0 0 4px 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;position:relative}
+.ruler span.cut::before{content:"";position:absolute;left:-1px;top:2px;bottom:0;width:0;border-left:2px dashed var(--head)}
+.track{background:var(--track);border-radius:6px;padding:8px;margin:4px 0 14px;position:relative}
+.lane.v{background:var(--track);border-radius:6px 0 0 6px;margin:4px 0 14px}
+.row .track{border-radius:0 6px 6px 0}
+.clip{--c:var(--iris);flex:var(--w,1) 1 0;min-width:0;text-align:left;cursor:pointer;border:0;border-radius:5px;padding:0;
+  background:color-mix(in srgb,var(--c) var(--clipfill),var(--panel));color:var(--ink);position:relative;overflow:hidden;
+  display:flex;flex-direction:column;min-height:98px}
+.clip::before{content:"";display:block;height:6px;background:var(--c)}
+.clip .n{font:700 12px var(--f-m);color:var(--c);padding:6px 9px 0}
+.clip .t{font:720 19px/1.05 var(--f-d);font-stretch:70%;padding:2px 9px 0;overflow-wrap:anywhere}
+.clip .f{font:11.5px var(--f-m);color:var(--mute);padding:4px 9px 8px;margin-top:auto;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.clip.manual{--c:var(--lavanda);background:repeating-linear-gradient(135deg,color-mix(in srgb,var(--c) 16%,var(--panel)) 0 8px,color-mix(in srgb,var(--c) 28%,var(--panel)) 8px 16px)}
+.clip[aria-pressed="true"]{box-shadow:inset 0 0 0 2px var(--c),0 0 0 1px var(--c)}
+.clip:hover{filter:brightness(1.05)}
+.clip.opt{--c:var(--iris);background:transparent;box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--c) 55%,transparent);border-style:dashed;min-height:74px}
+.clip.opt[aria-pressed="true"]{box-shadow:inset 0 0 0 2px var(--c),0 0 0 1px var(--c)}
+.gap{flex:var(--w,1) 1 0;min-width:0}
+.clip.here::after{content:"próximo";position:absolute;right:8px;top:12px;font:600 10.5px var(--f-ui);color:var(--head)}
+.playhead{position:absolute;top:-30px;bottom:-14px;width:2px;background:var(--head);pointer-events:none;transition:left .3s cubic-bezier(.3,.7,.2,1);z-index:2}
+.playhead::before{content:"";position:absolute;top:0;left:-6px;border:7px solid transparent;border-top:9px solid var(--head)}
+@media (prefers-reduced-motion:reduce){.playhead{transition:none}}
+.tl-note{font-size:13px;color:var(--mute);padding:0 16px 14px 56px;margin:-4px 0 0;display:flex;gap:6px 18px;flex-wrap:wrap}
+.tl-note .cutk{display:inline-block;width:0;height:12px;border-left:2px dashed var(--head);vertical-align:-1px;margin-right:6px}
+
+.insp{border-top:1px solid var(--line);padding:22px 24px 24px;display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:20px 34px;background:var(--panel)}
+.insp h3{font:760 30px/1 var(--f-d);font-stretch:72%;margin:0 0 6px;display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
+.insp h3 small{font:600 13px var(--f-m);color:var(--mute)}
+.insp p{margin:0 0 16px;color:var(--mute);max-width:62ch}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;font-size:14px;margin:0 0 14px}
+.kv dt{color:var(--mute)}.kv dd{margin:0}
+.req{background:var(--sunk);border-radius:8px;padding:10px 12px;display:flex;gap:10px;align-items:flex-start;margin:0 0 8px}
+.req q{flex:1;quotes:none;font-size:14px}
+
+/* in -> out */
+.flow{display:grid;grid-template-columns:minmax(0,1fr) 40px minmax(0,1fr);align-items:center;gap:8px}
+.flow .side{display:flex;flex-direction:column;gap:7px}
+.flow .lbl{font-size:12px;color:var(--mute)}
+.arrow{height:2px;background:var(--mute);position:relative}
+.arrow::after{content:"";position:absolute;right:-1px;top:-5px;border:6px solid transparent;border-left:8px solid var(--mute);border-right:0}
+.file{display:flex;gap:8px;align-items:center;font-size:13.5px;line-height:1.25;min-width:0}
+.file svg{flex:none}
+.file span{overflow-wrap:anywhere}
+.flow.mini{grid-template-columns:minmax(0,1fr);gap:6px}
+.mini .side{flex-direction:row;flex-wrap:wrap;align-items:center;gap:6px 14px}
+.mini .lbl{width:100%}
+.mini .arrow{width:2px;height:14px;margin-left:9px}
+.mini .arrow::after{right:-5px;top:auto;bottom:-1px;border:6px solid transparent;border-top:7px solid var(--mute);border-bottom:0}
+.mini .file{font-size:12.5px}
+.mini .file svg{width:20px;height:24px}
+
+/* ---------- recipes */
+.recipes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.recipe{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:18px 18px 16px;display:flex;flex-direction:column;gap:12px}
+.recipe h3{font:760 23px/1.05 var(--f-d);font-stretch:74%;margin:0}
+.recipe p{margin:4px 0 0;color:var(--mute);font-size:14px}
+.chain{display:flex;align-items:center;flex-wrap:wrap;row-gap:8px;background:var(--sunk);border-radius:8px;padding:10px}
+.link{--c:var(--iris);border:0;cursor:pointer;border-radius:4px;padding:6px 10px 6px 11px;font:700 15px/1.1 var(--f-d);font-stretch:78%;color:var(--ink);
+  background:color-mix(in srgb,var(--c) var(--clipfill),var(--panel));border-left:4px solid var(--c);text-align:left}
+.link small{display:block;font:11px var(--f-m);color:var(--mute);font-stretch:100%}
+.link.manual{background:repeating-linear-gradient(135deg,color-mix(in srgb,var(--lavanda) 16%,var(--panel)) 0 6px,color-mix(in srgb,var(--lavanda) 28%,var(--panel)) 6px 12px);border-left-color:var(--lavanda)}
+.join{width:18px;height:2px;background:var(--line)}
+.recipe .req{margin:0}
+
+/* ---------- cards */
+.filters{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:0 0 6px}
+.chip{--c:var(--mute);border:1px solid var(--line);background:var(--panel);border-radius:999px;padding:5px 12px 5px 10px;cursor:pointer;font-size:14px;display:flex;gap:7px;align-items:center}
+.chip i{width:10px;height:10px;border-radius:2px;background:var(--c)}
+.chip span{color:var(--mute);font-size:12.5px}
+.chip[aria-pressed="true"]{border-color:var(--ink);background:var(--ink);color:var(--bg)}
+.chip[aria-pressed="true"] span{color:inherit;opacity:.7}
+.search{flex:1 1 220px;max-width:340px;margin-left:auto;border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:7px 12px}
+.areahead{display:flex;gap:12px;align-items:baseline;margin:26px 0 12px;flex-wrap:wrap}
+.areahead h3{font:760 24px/1 var(--f-d);font-stretch:74%;margin:0;display:flex;gap:8px;align-items:center}
+.areahead h3 i{width:12px;height:12px;border-radius:2px;background:var(--c)}
+.areahead p{margin:0;color:var(--mute);font-size:14px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px}
+.card{--c:var(--iris);background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:16px 16px 14px;display:flex;flex-direction:column;gap:10px;position:relative;overflow:hidden}
+.card::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--c)}
+.card h4{font:760 21px/1.05 var(--f-d);font-stretch:76%;margin:0}
+.card .slug{font:11.5px var(--f-m);color:var(--mute)}
+.card p{margin:0;font-size:14px;color:var(--mute)}
+.card .mini-box{background:var(--sunk);border-radius:8px;padding:10px}
+.card details{font-size:13px;color:var(--mute)}
+.card details summary{cursor:pointer}
+.card footer{display:flex;gap:8px;margin-top:auto;flex-wrap:wrap;padding-top:2px}
+.empty{color:var(--mute);padding:20px;border:1px dashed var(--line);border-radius:var(--r)}
+.warn{border:1px solid color-mix(in srgb,var(--manga) 70%,transparent);background:color-mix(in srgb,var(--manga) 10%,var(--panel));border-radius:var(--r);padding:12px 16px;font-size:14px;margin:14px 0 0}
+
+/* ---------- PC */
+.pc{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(0,1fr);gap:14px;align-items:start}
+.box{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:18px 20px;min-width:0}
+.box h3{font:760 23px/1 var(--f-d);font-stretch:74%;margin:0 0 12px}
+.status{display:flex;gap:12px;align-items:center;margin:0 0 12px}
+.lamp{width:18px;height:18px;border-radius:50%;background:var(--mute);flex:none}
+.lamp.ok{background:var(--ok);box-shadow:0 0 0 4px color-mix(in srgb,var(--ok) 22%,transparent)}
+.lamp.bad{background:var(--bad);box-shadow:0 0 0 4px color-mix(in srgb,var(--bad) 22%,transparent)}
+.lamp.wait{background:transparent;border:2px dashed var(--mute)}
+.status b{font:760 25px/1 var(--f-d);font-stretch:76%}
+.doclines{font:12px/1.6 var(--f-m);margin:8px 0 0;max-height:280px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere}
+.doclines .k{color:var(--ok)}.doclines .x{color:var(--bad)}
+.client{border-top:1px solid var(--line);padding:14px 0}
+.client:first-of-type{border-top:0;padding-top:0}
+.client .ch{display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap}
+.client b.cn{font:760 21px/1.1 var(--f-d);font-stretch:76%}
+.path{font:11.5px var(--f-m);color:var(--mute);overflow-wrap:anywhere}
+.styl{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0 4px}
+.ep{display:grid;grid-template-columns:minmax(0,180px) minmax(0,1fr) auto;gap:10px;align-items:center;margin-top:6px;font-size:14px;padding:5px 6px;border-radius:6px;cursor:pointer;border:0;background:transparent;text-align:left;width:100%}
+.ep:hover{background:var(--soft)}
+.ep[aria-current="true"]{background:color-mix(in srgb,var(--head) 10%,transparent)}
+.ep .nm{font:12.5px var(--f-m);overflow-wrap:anywhere}
+.ep.part .nm{padding-left:14px;color:var(--mute);border-left:2px solid var(--line);margin-left:4px}
+.ep .st{font-size:13px;color:var(--mute);white-space:nowrap}
+.legend{display:flex;gap:4px 14px;flex-wrap:wrap;font-size:12px;color:var(--mute);margin:12px 0 0}
+
+.actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:14px}
+form.act{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:16px 18px;display:flex;flex-direction:column;gap:9px}
+form.act h4{font:760 20px/1 var(--f-d);font-stretch:76%;margin:0}
+form.act p{margin:0 0 2px;font-size:13px;color:var(--mute)}
+form.act label{font-size:13px;color:var(--mute);display:flex;flex-direction:column;gap:3px}
+form.act input,form.act select{border:1px solid var(--line);background:var(--sunk);border-radius:7px;padding:7px 10px;color:var(--ink);font:14px var(--f-ui);min-width:0}
+form.act .btn{align-self:flex-start;margin-top:auto}
+.console{margin-top:12px;background:var(--sunk);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;font:12.5px/1.55 var(--f-m);white-space:pre-wrap;overflow-wrap:anywhere;min-height:60px;max-height:320px;overflow:auto;color:var(--mute)}
+.console.has{color:var(--ink)}
+.console .err{color:var(--bad)}
+
+/* ---------- tools */
+.cols{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.2fr);gap:14px;align-items:start}
+.tlist{list-style:none;margin:0;padding:0;font-size:13.5px}
+.tlist li{display:grid;grid-template-columns:150px minmax(0,1fr);gap:12px;padding:7px 0;border-top:1px solid var(--soft)}
+.tlist li:first-child{border-top:0}
+.tlist li>*{min-width:0;overflow-wrap:anywhere}
+.tlist .code{justify-self:start}
+.tlist .c2{color:var(--mute)}
+.tlist .c2 small{display:block;font:11.5px var(--f-m);margin-top:2px}
+footer.end{padding:44px 0 52px;color:var(--mute);font-size:13px}
+
+/* ---------- responsive */
+@media (max-width:980px){
+  .hero-body,.pc,.cols,.insp{grid-template-columns:minmax(0,1fr)}
+  .files{border-left:0;border-top:1px solid var(--line)}
+  .recipes{grid-template-columns:minmax(0,1fr)}
+  .actions{grid-template-columns:minmax(0,1fr)}
+}
+@media (max-width:760px){
+  .bar{position:static}
+  .bar .wrap{gap:8px 12px}
+  .brand{flex:1;order:0}
+  .tabs{order:2;width:100%}.tabs button{flex:1}
+  .meta{order:1}
+  .ctx{margin-left:0;order:3;width:100%;flex-wrap:nowrap}
+  .field{flex:1 1 0;min-width:0;padding-left:8px}.field select{max-width:none;flex:1;min-width:0;padding-right:0}
+  nav.jump{order:4;width:calc(100% + 12px);overflow-x:auto;margin:0 -6px;white-space:nowrap;scrollbar-width:none}
+  nav.jump::-webkit-scrollbar{display:none}
+  .epmeta{justify-content:flex-start}
+  .epname{font-size:46px}
+  .hero-top,.step,.files,.batch{padding-left:18px;padding-right:18px}
+  .prog{grid-template-columns:repeat(4,minmax(0,1fr));padding:0 18px 18px}
+  .ask{flex-direction:column}
+  .brow{grid-template-columns:minmax(0,1fr) auto}
+  .brow .strip{grid-column:1/-1;grid-row:2}
+  .brow .nx{grid-column:1/-1;grid-row:3}
+  .row{grid-template-columns:minmax(0,1fr)}
+  .lane,.ruler,.playhead,.tl-note .cutk{display:none}
+  .clips{flex-direction:column}
+  .track{margin:0 0 12px;border-radius:6px!important}
+  .clip{min-height:0;flex:none}
+  .gap{display:none}
+  .clip .f{margin-top:0}
+  .tl-note{padding:0 16px 14px}
+  .insp{border:1px solid var(--line);border-radius:8px;margin:4px 0 6px;padding:16px}
+  .flow{grid-template-columns:minmax(0,1fr);gap:10px}
+  .arrow{width:2px;height:22px;justify-self:start;margin-left:10px}
+  .arrow::after{right:-5px;top:auto;bottom:-1px;border:6px solid transparent;border-top:8px solid var(--mute);border-bottom:0}
+  .ep{grid-template-columns:minmax(0,1fr) auto}
+  .ep .strip{grid-column:1/-1;grid-row:2}
+  .tlist li{grid-template-columns:minmax(0,1fr);gap:4px}
+  .search{max-width:none;margin-left:0}
+  h2{font-size:31px}
+}
+</style>
+</head>
+<body>
+<header class="bar">
+  <div class="wrap">
+    <a class="brand" href="#cliente"><i></i>Arsenal</a>
+    <div class="tabs" role="tablist" aria-label="Parte da página">
+      <button role="tab" type="button" id="t-cliente" data-view="cliente" aria-controls="v-cliente">Cliente</button>
+      <button role="tab" type="button" id="t-geral" data-view="geral" aria-controls="v-geral">Geral</button>
+    </div>
+    <nav class="jump" aria-label="Seções" id="nav"></nav>
+    <div class="ctx" id="ctx">
+      <label class="field">Cliente<select id="c-slug" aria-label="Cliente"></select></label>
+      <label class="field">Episódio<select id="c-ep" aria-label="Episódio"></select></label>
+    </div>
+    <div class="meta"><span class="mode" id="mode"></span><button class="btn small ghost" id="theme" type="button" aria-label="Trocar tema claro ou escuro">Tema</button></div>
+  </div>
+</header>
+
+<main class="wrap">
+ <div id="v-cliente" role="tabpanel" aria-labelledby="t-cliente">
+  <p class="viewnote">O trabalho de cada cliente neste PC: em que etapa está cada episódio e o próximo pedido, já preenchido.</p>
+  <section class="now" id="agora"><div class="hero" id="hero"></div></section>
+
+  <section id="clientes">
+    <div class="head"><div><h2>Clientes neste PC</h2><p class="sub">Clique num episódio para vê-lo acima. A etapa vem dos arquivos que existem na pasta.</p></div></div>
+    <div class="pc">
+      <div class="box" id="clients"></div>
+      <div class="box" id="doc"></div>
+    </div>
+    <div id="act"></div>
+  </section>
+ </div>
+
+ <div id="v-geral" role="tabpanel" aria-labelledby="t-geral" hidden>
+  <p class="viewnote">O que o sistema e as skills sabem fazer, para qualquer cliente. Os pedidos ficam com os campos em aberto, como <mark class="ph">&lt;slug&gt;</mark>.</p>
+  <section id="pipeline">
+    <div class="head"><div><h2>O caminho de um episódio</h2><p class="sub">Clique numa etapa para ver o que entra, o que sai, o modelo e os pedidos.</p></div></div>
+    <div class="tl">
+      <div class="tl-in">
+        <div class="row"><span></span><div class="ruler" id="ruler"></div></div>
+        <div class="row"><div class="lane v">V1</div><div class="track"><div class="clips" id="clips"></div><div class="playhead" id="ph"></div></div></div>
+        <div class="row" id="v2row" hidden><div class="lane v">V2</div><div class="track"><div class="clips" id="clips2"></div></div></div>
+      </div>
+      <p class="tl-note"><span><span class="cutk"></span>cada corte é uma conversa nova do Claude</span><span>Meta de custo: episódio longo ≈ US$ 10, reel ≈ US$ 7 (US$ 3 a 3,50 em lote)</span></p>
+      <div class="insp" id="insp"></div>
+    </div>
+  </section>
+
+  <section id="receitas">
+    <div class="head"><div><h2>Receitas</h2><p class="sub">Skills que funcionam em sequência. Clique numa peça para ver a ficha dela; o pedido pede a trilha toda.</p></div></div>
+    <div class="recipes" id="recipes"></div>
+  </section>
+
+  <section id="skills">
+    <div class="head"><div><h2>Skills por área</h2><p class="sub">O que entra e o que sai de cada uma. Chame pelo nome com <span class="code">/nome</span> ou cole o pedido.</p></div></div>
+    <div class="filters" id="filters"></div>
+    <div id="cards"></div>
+    <div id="nobloc"></div>
+  </section>
+
+  <section id="ferramentas">
+    <div class="head"><div><h2>Ferramentas e comandos</h2><p class="sub">As skills chamam estas ferramentas; você só precisa dos comandos do <span class="code">studio.py</span>.</p></div></div>
+    <div class="cols">
+      <div class="box"><h3>Comandos do studio.py</h3><ul class="tlist" id="cli"></ul></div>
+      <div class="box"><h3>Pasta tools/</h3><ul class="tlist" id="tools"></ul></div>
+    </div>
+  </section>
+ </div>
+  <footer class="end" id="end"></footer>
+</main>
+
+<script>
+const D = /*DATA*/null;
+const C = D.cat, AREAS = C.areas, BY = Object.fromEntries(C.items.map(x => [x.name, x]));
+let PC = D.pc;
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const col = a => `var(--${(AREAS[a] || {}).cor || "iris"})`;
+const store = {get(k){ try { return JSON.parse(localStorage.getItem(k)); } catch(e){ return null; } }, set(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch(e) {} }};
+const mobile = () => matchMedia("(max-width:760px)").matches;
+const smooth = () => matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth";
+
+/* theme */
+(function(){
+  const t = store.get("arsenal-theme"); if (t) document.documentElement.dataset.theme = t;
+  $("#theme").onclick = () => {
+    const cur = document.documentElement.dataset.theme || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+    const nx = cur === "dark" ? "light" : "dark"; document.documentElement.dataset.theme = nx; store.set("arsenal-theme", nx);
+  };
+})();
+$("#mode").textContent = D.serve ? "Painel ligado" : "Catálogo";
+if (D.serve) $("#mode").classList.add("on");
+
+/* ---------- context: client + episode fill the placeholders of every request */
+let ctx = store.get("arsenal-ctx") || {};
+const client = () => PC.clients.find(c => c.slug === ctx.slug) || null;
+const episode = () => { const c = client(); return c && c.episodes.find(e => e.name === ctx.ep) || null; };
+const leaf = n => String(n).split("/").pop();
+function fixCtx(){
+  if (!client()) ctx.slug = PC.clients[0] ? PC.clients[0].slug : "";
+  const c = client();
+  if (c && !episode()) ctx.ep = c.episodes[0] ? c.episodes[0].name : "";
+  if (!c) ctx.ep = "";
+  store.set("arsenal-ctx", ctx);
+}
+function drawCtx(){
+  fixCtx();
+  $("#c-slug").innerHTML = PC.clients.length ? PC.clients.map(c => `<option value="${esc(c.slug)}">${esc(c.name)}</option>`).join("") : `<option value="">nenhum cliente</option>`;
+  $("#c-slug").value = ctx.slug || "";
+  const c = client();
+  $("#c-ep").innerHTML = c && c.episodes.length ? c.episodes.map(e => `<option value="${esc(e.name)}">${esc(e.part ? "  └ " + leaf(e.name) : e.name)}</option>`).join("") : `<option value="">nenhum episódio</option>`;
+  $("#c-ep").value = ctx.ep || "";
+}
+function setCtx(slug, ep){ ctx = {slug, ep}; drawCtx(); drawAll(); }
+$("#c-slug").onchange = e => setCtx(e.target.value, "");
+$("#c-ep").onchange = e => setCtx(ctx.slug, e.target.value);
+
+/* <slug>, <episódio>, <ep> come from the context; <pasta> only where the episode knows its raw folder */
+function fill(text, extra = {}){
+  let s = String(text || "");
+  if (ctx.slug) s = s.replaceAll("<slug>", ctx.slug);
+  if (ctx.ep){ s = s.replaceAll("<episódio>", leaf(ctx.ep)).replaceAll("<ep>", leaf(ctx.ep)); }
+  for (const [k, v] of Object.entries(extra)) if (v) s = s.replaceAll(k, v);
+  return s;
+}
+const marked = s => esc(s).replace(/&lt;([^&]{1,40}?)&gt;/g, '<mark class="ph" title="troque antes de colar">&lt;$1&gt;</mark>');
+const askBox = (text, label = "Copiar pedido", primary = true) => `<div class="ask"><q>${marked(text)}</q><button class="btn ${primary ? "primary" : "small"}" type="button" data-copy="${esc(text)}">${esc(label)}</button></div>`;
+const reqBox = text => `<div class="req"><q>${marked(text)}</q><button class="btn small" type="button" data-copy="${esc(text)}">Copiar</button></div>`;
+
+/* copy */
+async function copy(text, btn){
+  let ok = false;
+  try { await navigator.clipboard.writeText(text); ok = true; } catch(e) {
+    const ta = document.createElement("textarea"); ta.value = text; ta.style.position = "fixed"; ta.style.opacity = "0";
+    document.body.appendChild(ta); ta.select(); try { ok = document.execCommand("copy"); } catch(e2) {} ta.remove();
+  }
+  if (btn){ const o = btn.textContent; btn.textContent = ok ? "Copiado" : "Selecione e copie"; btn.classList.toggle("copied", ok); setTimeout(() => { btn.textContent = o; btn.classList.remove("copied"); }, 1500); }
+}
+document.addEventListener("click", e => { const b = e.target.closest("[data-copy]"); if (b) copy(b.dataset.copy, b); });
+
+/* file icons */
+const FT = {xml:["XML","#d9932b"],mp4:["MP4","#d84b5a"],aep:["AEP","#8f7dff"],prproj:["PR","#c96bf0"],md:["MD","#4f8fe0"],
+  json:["JSON","#2f9e68"],html:["HTML","#e2703a"],png:["PNG","#21a3ad"],wav:["WAV","#9aa62a"],fonte:["Aa","#7d8593"]};
+function icon(t){
+  if (t === "pasta") return `<svg width="26" height="22" viewBox="0 0 26 22" aria-hidden="true"><path d="M1 4a2 2 0 0 1 2-2h6l2 3h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2z" fill="color-mix(in srgb,var(--manga) 35%,var(--panel))" stroke="var(--manga)" stroke-width="1.4"/></svg>`;
+  const [lab, c] = FT[t] || [String(t).toUpperCase().slice(0,4), "#7d8593"];
+  const fs = lab.length > 3 ? 6.4 : 8;
+  return `<svg width="24" height="29" viewBox="0 0 24 29" aria-hidden="true"><path d="M2 1h14l7 7v19a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1z" fill="var(--raise)" stroke="var(--mute)" stroke-width="1.2"/><path d="M16 1v7h7" fill="none" stroke="var(--mute)" stroke-width="1.2"/><rect x="0" y="15" width="21" height="10" rx="1.5" fill="${c}"/><text x="10.5" y="22.6" text-anchor="middle" font-family="Segoe UI,sans-serif" font-weight="700" font-size="${fs}" fill="#fff">${esc(lab)}</text></svg>`;
+}
+function file(s){ const [t, ...r] = String(s).split("|"); const lab = r.length ? r.join("|") : t; return `<div class="file">${icon(r.length ? t : "md")}<span>${esc(lab)}</span></div>`; }
+function flow(it, mini){
+  const a = it.entradas || [], b = it.saidas || [];
+  if (!a.length && !b.length) return "";
+  return `<div class="flow ${mini ? "mini" : ""}"><div class="side"><span class="lbl">Entra</span>${a.map(file).join("")}</div><div class="arrow" aria-hidden="true"></div><div class="side"><span class="lbl">Sai</span>${b.map(file).join("")}</div></div>`;
+}
+
+/* ---------- next step of an episode (from the files in its folder) */
+const STG = ["Cliente","Estilo","Decupagem","Premiere","Storyboard","After","Estudo final"];
+const P = C.pipeline.map(n => BY[n]).filter(Boolean);
+/* optional stages (arsenal `ao_lado: <stage>`): drawn on V2 under their stage, never part of the episode's linear progress */
+const OPT = C.items.filter(x => x.ao_lado && C.pipeline.includes(x.ao_lado));
+const PX = P.concat(OPT);
+const optOf = name => OPT.filter(x => x.ao_lado === name);
+const lastI = e => e && e.done.length ? Math.max(...e.done.map(x => x.i)) : -1;
+const ped = (name, k = 0) => ((BY[name] || {}).pedidos || [])[k] || "";
+function nextStep(e){
+  const L = lastI(e), raw = {"<pasta>": e && e.raw};
+  if (L < 2) return {i: 2, pedido: fill(ped("decupagem"), raw), hint: e && e.raw ? "A pasta do bruto veio do episode.json." : "Troque <pasta> pela pasta do bruto antes de colar."};
+  if (L === 2) return {i: 3, manual: true, depois: fill(ped("storyboard")), hint: "Quando exportar o XML final e o MP4 leve, cole este pedido numa conversa nova."};
+  if (L === 3) return {i: 4, pedido: fill(ped("storyboard"))};
+  if (L === 4 && !e.motion_map) return {i: 4, pedido: fill(ped("storyboard", 1)), hint: "O storyboard já começou: este pedido continua a revisão."};
+  if (L === 4) return {i: 5, pedido: fill(ped("after-handoff")), hint: "Só depois de aprovar o storyboard."};
+  if (L === 5) return {i: 6, pedido: fill(ped("estudo-final")), hint: "Quando o editor terminar o vídeo."};
+  return {done: true};
+}
+const stepItem = i => P[i];
+const shortStep = n => n.done ? "concluído" : (n.manual ? "editar no Premiere" : stepItem(n.i).titulo);
+
+/* ---------- hero: Agora */
+function stageOn(c, L, k){ return k === 0 ? true : k === 1 ? !!(c && c.style.ok) : k <= L; }
+function progress(c, e, n){
+  const L = lastI(e);
+  return `<div class="prog" role="list">${STG.map((s, k) => {
+    const on = stageOn(c, L, k), nx = !n.done && n.i === k && !on;
+    return `<div role="listitem" class="s ${on ? "on" : ""} ${k === 3 ? "man" : ""} ${nx ? "next" : ""}"><small>${k + 1}${nx ? " · próximo" : on ? " · feito" : ""}</small><b>${esc(s)}</b></div>`; }).join("")}</div>`;
+}
+function filesBox(c, e, list){
+  const all = list || (e.files || []).map(f => Object.assign({ep: e.name}, f));
+  const rows = all.map(f => `<div class="frow">${icon(f.tipo)}<span>${esc(f.label)}<small>${esc(f.rel)}</small></span>${D.serve ? `<button class="btn small" type="button" data-file="${esc(f.rel)}" data-fe="${esc(f.ep)}">${["aep","xml","prproj"].includes(f.tipo) ? "Mostrar" : "Abrir"}</button>` : ""}</div>`).join("");
+  return `<div class="files"><h4>Arquivos do episódio</h4>${rows || `<p class="hint">Nenhum arquivo do pipeline ainda.</p>`}
+    ${D.serve ? `<div class="frow">${icon("pasta")}<span>pasta do episódio</span><button class="btn small" type="button" data-open="${esc(c.slug)}" data-ep="${esc(e.name)}">Abrir</button></div>` : ""}</div>`;
+}
+function styleTag(c){
+  const s = c.style;
+  if (!s.style_md) return `<span class="tag warn">sem STYLE.md</span>`;
+  if (s.gaps.length) return `<span class="tag warn">estilo incompleto: ${esc(s.gaps.join(", "))}</span>`;
+  return `<span class="tag good">estilo pronto</span>`;
+}
+function drawHero(){
+  const c = client(), e = episode();
+  if (!c){
+    $("#hero").innerHTML = `<div class="empty-hero"><h3>Comece por um cliente</h3><p class="sub">Nenhum cliente cadastrado neste PC. Peça ao Claude ou use os formulários em Este PC.</p>${askBox(ped("novo-cliente"))}</div>`; return;
+  }
+  if (!e){
+    $("#hero").innerHTML = `<div class="hero-top"><div><p class="who">${esc(c.name)}</p><h1 class="epname">Nenhum episódio</h1></div><div class="epmeta">${styleTag(c)}</div></div><div class="step">${askBox(fill(ped("novo-cliente", 2)))}</div>`; return;
+  }
+  const parts = (e.parts || []).map(n => c.episodes.find(x => x.name === n)).filter(Boolean);
+  const top = `<div class="hero-top"><div><p class="who">${esc(c.name)}${e.part ? " · lote " + esc(e.name.split("/")[0]) : ""}</p><h1 class="epname">${esc(leaf(e.name))}</h1></div>
+    <div class="epmeta">${parts.length ? `<span class="tag">${parts.length} reels em lote</span>` : ""}${styleTag(c)}${c.style.feedback ? `<span class="tag">último feedback ${esc(c.style.feedback.split("-").reverse().join("/"))}</span>` : ""}</div></div>`;
+  if (parts.length){
+    const ns = parts.map(nextStep), same = ns.every(n => n.i === ns[0].i && !n.done);
+    const names = parts.map(p => leaf(p.name)).join(", ");
+    let lote = "";
+    if (same && ns[0].manual) lote = `<p class="hint" style="margin:0 0 10px">Todos os reels estão prontos para editar no Premiere. Depois, um pedido só para o lote:</p>${askBox(fill(ped("storyboard")).replace(leaf(e.name), leaf(e.name) + " (" + names + ")") )}`;
+    else if (same) lote = askBox(ns[0].pedido + ` Em lote: ${names}.`, "Copiar pedido do lote");
+    const rows = parts.map((p, k) => { const n = ns[k], L = lastI(p);
+      return `<div class="brow"><span class="nm">${esc(leaf(p.name))}</span><div class="strip">${STG.map((s, j) => `<i class="${stageOn(c, L, j) ? "on" : ""} ${j === 3 ? "man" : ""} ${!n.done && n.i === j && j > L ? "nx" : ""}" title="${esc(s)}"></i>`).join("")}</div>
+        <span class="nx">${esc(p.done.length ? p.done[p.done.length - 1].label : "criado")} → <b>${esc(shortStep(n))}</b></span>
+        <button class="btn small" type="button" data-pick="${esc(p.name)}">Ver</button></div>`; }).join("");
+    $("#hero").innerHTML = top +
+      `<div class="hero-body"><div class="step"><p class="k">Lote</p><h3>${same ? "Próximo passo do lote: " + esc(shortStep(ns[0])) : "Reels em etapas diferentes"}</h3><p>Uma conversa para o lote todo divide o custo fixo entre os reels.</p>${lote}</div>${filesBox(c, e, parts.flatMap(p => (p.files || []).map(f => Object.assign({}, f, {ep: p.name, label: leaf(p.name) + ": " + f.label}))))}</div>
+       <div class="batch">${rows}</div>`;
+    return;
+  }
+  const n = nextStep(e), it = n.done ? null : stepItem(n.i);
+  let step;
+  if (n.done) step = `<p class="k">Concluído</p><h3>Episódio fechado</h3><p>O estudo final já está gravado. As lições valem para o próximo episódio deste cliente.</p>`;
+  else if (n.manual) step = `<p class="k">Próximo passo · etapa 4 · você</p><h3>Editar no Premiere</h3><p>${esc(it.resumo)}</p>${askBox(n.depois, "Copiar o pedido seguinte", false)}<p class="hint">${esc(n.hint)}</p><p class="hint" style="margin-top:10px"><button class="btn small ghost" type="button" data-stage="${n.i}">Ver a ficha desta etapa em Geral</button></p>`;
+  else step = `<p class="k">Próximo passo · etapa ${n.i + 1} · ${esc((it.modelo || "").split(",")[0])} · conversa nova</p><h3>${esc(it.titulo)}</h3><p>${esc(it.resumo)}</p>${askBox(n.pedido)}${n.hint ? `<p class="hint">${esc(n.hint)}</p>` : ""}<p class="hint" style="margin-top:10px"><button class="btn small ghost" type="button" data-stage="${n.i}">Ver a ficha desta etapa em Geral</button></p>`;
+  const L0 = lastI(e), optHere = !n.done && L0 >= 3 ? OPT.filter(x => C.pipeline.indexOf(x.ao_lado) <= L0 + 1) : [];
+  const optBox = optHere.map(x => `<p class="hint" style="margin-top:12px">Opcional, ao lado do ${esc((BY[x.ao_lado] || {}).titulo || x.ao_lado)}: ${esc(x.titulo)} (${esc((x.modelo || "").split(",")[0])}, conversa nova).</p>${reqBox(fill(ped(x.name)))}`).join("");
+  const warnStyle = !c.style.ok ? `<p class="hint" style="margin-top:12px">O estilo do cliente está incompleto. Antes do storyboard vale rodar a skill de estilo:</p>${reqBox(fill(ped("motion-refs")))}` : "";
+  $("#hero").innerHTML = top + progress(c, e, n) + `<div class="hero-body"><div class="step">${step}${optBox}${warnStyle}</div>${filesBox(c, e)}</div>`;
+}
+$("#hero").addEventListener("click", e => {
+  const p = e.target.closest("[data-pick]"); if (p) setCtx(ctx.slug, p.dataset.pick);
+  const st = e.target.closest("[data-stage]"); if (st){ cur = +st.dataset.stage; showView("geral"); pick(cur); }
+  const f = e.target.closest("[data-file]"); if (f) call("open-file", {slug: ctx.slug, episode: f.dataset.fe, rel: f.dataset.file});
+});
+
+/* ---------- pipeline */
+const W = {"novo-cliente":.9,"motion-refs":1,"decupagem":1.25,"premiere":1.35,"storyboard":1.25,"after-handoff":1.15,"estudo-final":1};
+const shortModel = it => it.manual ? "você" : (it.modelo || "").split(",")[0];
+$("#ruler").innerHTML = P.map((it, i) => `<span style="--w:${W[it.name] || 1}" class="${i ? "cut" : ""}">${esc(shortModel(it))}</span>`).join("");
+$("#clips").innerHTML = P.map((it, i) =>
+  `<button class="clip ${it.manual ? "manual" : ""}" style="--w:${W[it.name] || 1}" data-i="${i}" aria-pressed="false" type="button"><span class="n">${i + 1}</span><span class="t">${esc(it.titulo)}</span><span class="f">${esc(it.manual ? "você" : "/" + it.name)}</span></button>`).join("");
+if (OPT.length){
+  $("#v2row").hidden = false;
+  $("#clips2").innerHTML = P.map(it => { const os = optOf(it.name);
+    if (!os.length) return `<span class="gap" style="--w:${W[it.name] || 1}"></span>`;
+    return os.map(o => { const j = PX.indexOf(o);
+      return `<button class="clip opt" style="--w:${(W[it.name] || 1) / os.length}" data-i="${j}" aria-pressed="false" type="button"><span class="n">opcional</span><span class="t">${esc(o.titulo)}</span><span class="f">/${esc(o.name)}</span></button>`; }).join(""); }).join("");
+}
+let cur = 2;
+const stepNo = (it, i) => it.ao_lado ? "Opcional ·" : String(i + 1) + ".";
+function inspHTML(it, i){
+  const reqs = (it.pedidos || []).map(p => reqBox(p)).join("") || `<div class="req"><q>Nada para pedir ao Claude aqui: depois de exportar, siga para o storyboard.</q></div>`;
+  const side = it.ao_lado ? `<p class="hint">Ao lado de “${esc((BY[it.ao_lado] || {}).titulo || it.ao_lado)}”: não muda a etapa do episódio.</p>` : "";
+  return `<div><h3><span>${stepNo(it, i)} ${esc(it.titulo)}</span><small>${esc(it.manual ? "etapa manual" : "/" + it.name)}</small></h3>${side}<p>${esc(it.resumo)}</p>${flow(it)}</div>
+  <div><dl class="kv"><dt>Modelo</dt><dd>${esc(it.modelo || "—")}</dd>${(it.ferramentas || []).length ? `<dt>Ferramentas</dt><dd>${it.ferramentas.map(f => `<span class="code">${esc(f)}</span>`).join(" ")}</dd>` : ""}</dl>${reqs}</div>`;
+}
+function placeHead(){
+  const c = document.querySelector(`.clip[data-i="${cur}"]`); if (!c) return;
+  $("#ph").style.left = (c.offsetLeft + c.offsetWidth / 2 - 1) + "px";
+}
+function pick(i){
+  cur = i;
+  document.querySelectorAll(".clip").forEach(c => c.setAttribute("aria-pressed", c.dataset.i == i));
+  const c = document.querySelector(`.clip[data-i="${i}"]`), box = $("#insp");
+  box.innerHTML = inspHTML(PX[i], i);
+  if (mobile()) c.after(box); else if (box.parentElement !== $(".tl")) $(".tl").appendChild(box);
+  placeHead();
+}
+$("#clips2").addEventListener("click", e => { const c = e.target.closest(".clip"); if (c){ pick(+c.dataset.i); if (mobile()) c.scrollIntoView({block: "nearest"}); } });
+$("#clips").addEventListener("click", e => { const c = e.target.closest(".clip"); if (c){ pick(+c.dataset.i); if (mobile()) c.scrollIntoView({block: "nearest"}); } });
+let wasMobile = mobile();
+addEventListener("resize", () => { if (mobile() !== wasMobile){ wasMobile = mobile(); pick(cur); } else placeHead(); });
+
+/* ---------- recipes */
+function goto(name){
+  const pi = PX.findIndex(x => x.name === name);
+  if (pi >= 0){ pick(pi); $("#pipeline").scrollIntoView({behavior: smooth()}); return; }
+  area = "todas"; q = ""; drawFilters(); drawCards();
+  const el = document.getElementById("card-" + name); if (el){ el.scrollIntoView({block: "center", behavior: smooth()}); el.querySelector("button")?.focus({preventScroll: true}); }
+}
+function drawRecipes(){
+  $("#recipes").innerHTML = C.receitas.map(r => `<article class="recipe"><div><h3>${esc(r.titulo)}</h3><p>${esc(r.quando)}</p></div>
+    <div class="chain">${r.passos.map((n, k) => { const it = BY[n] || {titulo: n, area: "pipeline"};
+      return (k ? `<span class="join" aria-hidden="true"></span>` : "") + `<button class="link ${it.manual ? "manual" : ""}" style="--c:${col(it.area)}" type="button" data-go="${esc(n)}">${esc(it.titulo)}<small>${esc(it.manual ? "você" : "/" + n)}</small></button>`; }).join("")}</div>
+    ${reqBox(r.pedido)}</article>`).join("");
+}
+$("#recipes").addEventListener("click", e => { const b = e.target.closest("[data-go]"); if (b) goto(b.dataset.go); });
+
+/* ---------- cards */
+let area = "todas", q = "";
+const ORDER = Object.keys(AREAS);
+function drawFilters(){
+  const n = a => C.items.filter(x => !x.manual && x.area === a).length;
+  $("#filters").innerHTML = `<button class="chip" type="button" data-a="todas" aria-pressed="${area === "todas"}">Todas <span>${C.items.filter(x => !x.manual).length}</span></button>` +
+    ORDER.map(a => `<button class="chip" style="--c:${col(a)}" type="button" data-a="${a}" aria-pressed="${area === a}"><i></i>${esc(AREAS[a].titulo)} <span>${n(a)}</span></button>`).join("") +
+    `<input class="search" id="q" type="search" placeholder="Buscar: legenda, After, Figma…" aria-label="Buscar skills" value="${esc(q)}">`;
+  $("#q").oninput = e => { q = e.target.value; drawCards(); };
+}
+$("#filters").addEventListener("click", e => { const b = e.target.closest(".chip"); if (b){ area = b.dataset.a; drawFilters(); drawCards(); } });
+function card(it){
+  const p = (it.pedidos || [])[0];
+  return `<article class="card" id="card-${esc(it.name)}" style="--c:${col(it.area)}"><div><h4>${esc(it.titulo)}</h4><span class="slug">${esc(it.kind === "agente" ? "agente " + it.name : "/" + it.name)}${it.etapa ? " · etapa " + esc(it.etapa) : ""}</span></div>
+  <p>${esc(it.resumo || it.description)}</p>${flow(it, true) ? `<div class="mini-box">${flow(it, true)}</div>` : ""}
+  ${it.description ? `<details><summary>Descrição original</summary>${esc(it.description)}</details>` : ""}
+  <footer>${p ? `<button class="btn small" type="button" data-copy="${esc(p)}">Copiar pedido</button>` : ""}<button class="btn small ghost" type="button" data-copy="/${esc(it.name)}">Copiar /${esc(it.name)}</button></footer></article>`;
+}
+const norm = s => String(s).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+function drawCards(){
+  const words = norm(q).split(/\s+/).filter(Boolean);
+  const hay = it => norm([it.name, it.titulo, it.resumo, it.description, ...(it.entradas || []), ...(it.saidas || []), ...(it.pedidos || [])].join(" "));
+  let h = "";
+  for (const a of ORDER){
+    if (area !== "todas" && area !== a) continue;
+    const xs = C.items.filter(x => !x.manual && x.area === a && words.every(w => hay(x).includes(w))).sort((x, y) => (x.etapa || 99) - (y.etapa || 99));
+    if (!xs.length && (words.length || a !== "agentes")) continue;
+    h += `<div class="areahead" style="--c:${col(a)}"><h3><i></i>${esc(AREAS[a].titulo)}</h3><p>${esc(AREAS[a].resumo)}</p></div>`;
+    h += xs.length ? `<div class="grid">${xs.map(card).join("")}</div>` : `<div class="empty">Nenhum agente ainda. Quando alguém criar um em <span class="code">.claude/agents/</span> com o bloco <span class="code">arsenal:</span>, ele aparece aqui.</div>`;
+  }
+  $("#cards").innerHTML = h || `<div class="empty">Nada encontrado para “${esc(q)}”. Tente outra palavra, como legenda, After ou Figma.</div>`;
+}
+if (C.sem_bloco.length) $("#nobloc").innerHTML = `<div class="warn">Sem ficha no Arsenal: ${C.sem_bloco.map(n => `<span class="code">${esc(n)}</span>`).join(" ")}. Skill nossa: acrescente o bloco <span class="code">arsenal:</span> no cabeçalho do SKILL.md; skill externa: uma entrada em <span class="code">arsenal/extras.json</span>.</div>`;
+
+/* ---------- PC */
+function drawDoctor(d){
+  if (d.ok === null){ $("#doc").innerHTML = `<h3>Diagnóstico</h3><div class="status"><span class="lamp wait"></span><b>Conferindo…</b></div><p class="hint">O doctor leva alguns segundos.</p>`; return; }
+  const lines = esc(d.text).split("\n").map(l => l.includes("[OK]") ? `<span class="k">${l}</span>` : l.includes("[!!]") ? `<span class="x">${l}</span>` : l).join("\n");
+  const bad = (d.text.match(/^\s*\[!!\]/gm) || []).length || 1;
+  $("#doc").innerHTML = `<h3>Diagnóstico</h3><div class="status"><span class="lamp ${d.ok ? "ok" : "bad"}"></span><b>${d.ok ? "Tudo certo" : bad + (bad === 1 ? " item precisa" : " itens precisam") + " de atenção"}</b></div>
+   <details ${d.ok ? "" : "open"}><summary>Ver as linhas do doctor</summary><pre class="doclines">${lines}</pre></details>
+   ${D.serve ? `<p style="margin:12px 0 0"><button class="btn small" type="button" id="redoc">Rodar o doctor de novo</button></p>` : ""}`;
+  const r = $("#redoc"); if (r) r.onclick = runDoctor;
+}
+async function runDoctor(){
+  drawDoctor({ok: null});
+  try { const res = await post("doctor", {}); drawDoctor({ok: res.ok, text: res.out.split("\n").slice(1).join("\n")}); }
+  catch(e){ drawDoctor({ok: false, text: "[!!] o painel não respondeu: rode de novo o Arsenal.bat"}); }
+}
+function styleLine(c){
+  const s = c.style, t = [];
+  t.push(styleTag(c));
+  t.push(`<span class="tag">${s.refs} vídeo${s.refs === 1 ? "" : "s"} de referência</span>`);
+  t.push(`<span class="tag ${s.digests && s.in_style < s.digests ? "warn" : ""}">${s.in_style} de ${s.digests} estudados</span>`);
+  if (s.feedback) t.push(`<span class="tag">último feedback ${esc(s.feedback.split("-").reverse().join("/"))}</span>`);
+  return `<div class="styl">${t.join("")}</div>`;
+}
+function drawClients(){
+  const cs = PC.clients;
+  const eps = c => c.episodes.length ? c.episodes.map(e => { const L = lastI(e), n = e.parts && e.parts.length ? {done: true} : nextStep(e);
+    return `<button class="ep ${e.part ? "part" : ""}" type="button" data-ctx="${esc(c.slug)}" data-ep="${esc(e.name)}" aria-current="${c.slug === ctx.slug && e.name === ctx.ep}"><span class="nm">${esc(e.part ? leaf(e.name) : e.name)}</span><span class="strip" aria-hidden="true">${STG.map((s, k) => `<i class="${stageOn(c, L, k) ? "on" : ""} ${k === 3 ? "man" : ""} ${!n.done && n.i === k && k > L ? "nx" : ""}"></i>`).join("")}</span>
+      <span class="st">${esc(e.parts && e.parts.length ? e.parts.length + " reels" : e.done.length ? e.done[e.done.length - 1].label : "vazio")}</span></button>`; }).join("")
+    : `<p class="hint">Nenhum episódio ainda.</p>`;
+  $("#clients").innerHTML = (cs.length ? cs.map(c => `<div class="client"><div class="ch"><b class="cn">${esc(c.name)}</b>
+      ${D.serve ? `<button class="btn small" type="button" data-open="${esc(c.slug)}">Abrir pasta</button>` : `<span class="path">${esc(c.slug)}</span>`}</div>
+      <div class="path">${esc(c.dir)}${c.exists ? "" : " · pasta não encontrada"}</div>${styleLine(c)}${eps(c)}</div>`).join("")
+    + `<div class="legend"><span>Etapas:</span>${STG.map((s, k) => `<span>${k + 1} ${esc(s)}</span>`).join("")}</div>`
+    : `<div class="empty">Nenhum cliente cadastrado neste PC. ${D.serve ? "Use os formulários abaixo." : "Diga ao Claude: “vamos configurar um cliente novo”."}</div>`);
+  const sel = $("#ep-slug");
+  if (sel){ const keep = sel.value; sel.innerHTML = `<option value="">escolha o cliente</option>` + cs.map(c => `<option value="${esc(c.slug)}">${esc(c.slug)}</option>`).join(""); sel.value = cs.some(c => c.slug === keep) ? keep : ""; }
+}
+$("#clients").addEventListener("click", e => {
+  const b = e.target.closest("[data-ctx]"); if (b){ setCtx(b.dataset.ctx, b.dataset.ep); $("#agora").scrollIntoView({behavior: smooth()}); }
+});
+$("#end").textContent = `Gerada em ${D.gerado} por tools/arsenal.py. Para atualizar: python tools/studio.py arsenal (ou dois cliques no Arsenal.bat).`;
+
+/* ---------- actions (only with --serve) */
+const out = (m, has = true) => { const c = $("#console"); if (c){ c.innerHTML = m; c.classList.toggle("has", has); c.scrollTop = c.scrollHeight; } };
+async function post(action, body){
+  const r = await fetch("/api/" + action, {method: "POST", headers: {"Content-Type": "application/json", "X-Arsenal-Token": D.token}, body: JSON.stringify(body)});
+  return r.json();
+}
+async function call(action, body, ask, done, quiet){
+  if (ask && !confirm(ask)) return;
+  if (!D.serve) return;
+  if (!quiet) out(`executando ${esc(action)}…`);
+  try {
+    const res = await post(action, Object.assign({confirm: !!ask}, body));
+    if (!quiet || !res.ok) out(res.ok ? esc(res.out) : `<span class="err">${esc(res.out)}</span>`);
+    if (res.ok && done) done(res);
+    if (res.ok && ask) refresh();
+  } catch(e){ out(`<span class="err">Sem resposta do painel. Ele ainda está rodando? Abra de novo com o Arsenal.bat ou: python tools/studio.py arsenal --serve</span>`); }
+}
+async function refresh(){ try { const res = await post("state", {}); if (res.ok){ PC = Object.assign({}, PC, {clients: res.pc.clients}); drawCtx(); drawAll(); } } catch(e) {} }
+document.addEventListener("click", e => { const b = e.target.closest("[data-open]"); if (b) call("open-folder", {slug: b.dataset.open, episode: b.dataset.ep || ""}); });
+if (D.serve){
+  $("#act").innerHTML = `<div class="actions">
+   <form class="act" id="f-ep"><h4>Novo episódio</h4><p>Cria a pasta do episódio com assets/, premiere/, motion/, after/ e episode.json.</p>
+     <label>Cliente<select name="slug" id="ep-slug" required></select></label>
+     <label>Episódio<input name="episode" required placeholder="ep07-nome"></label>
+     <button class="btn primary" type="submit">Criar episódio</button></form>
+   <form class="act" id="f-new"><h4>Criar cliente novo</h4><p>Cria a pasta com brand/, refs/, projects/, client.json e STYLE.md do modelo.</p>
+     <label>Slug<input name="slug" required placeholder="nome-do-cliente" pattern="[a-z0-9][a-z0-9-]*"></label>
+     <label>Nome<input name="name" placeholder="Nome do Cliente"></label>
+     <label>Onde criar a pasta<input name="folder" required placeholder="D:\\Trabalho\\Clientes\\Nome\\motion"></label>
+     <button class="btn primary" type="submit">Criar cliente</button></form>
+   <form class="act" id="f-add"><h4>Cadastrar cliente existente</h4><p>A pasta já tem client.json e STYLE.md (outro PC, drive partilhado).</p>
+     <label>Slug<input name="slug" required placeholder="nome-do-cliente" pattern="[a-z0-9][a-z0-9-]*"></label>
+     <label>Pasta do cliente<input name="folder" required placeholder="D:\\Trabalho\\Clientes\\Nome\\motion"></label>
+     <label>Pasta dos episódios (opcional)<input name="projects" placeholder="se não for <pasta>\\projects"></label>
+     <button class="btn primary" type="submit">Cadastrar</button></form>
+  </div><div class="console" id="console" aria-live="polite">A saída dos comandos aparece aqui.</div>`;
+  out("A saída dos comandos aparece aqui.", false);
+  const fd = f => Object.fromEntries(new FormData(f));
+  $("#f-add").onsubmit = e => { e.preventDefault(); const b = fd(e.target); call("add-client", b, `Cadastrar "${b.slug}" apontando para:\n${b.folder}\n\nIsso altera o studio.config.json deste PC.`); };
+  $("#f-new").onsubmit = e => { e.preventDefault(); const b = fd(e.target); call("new-client", b, `Criar o cliente "${b.slug}" em:\n${b.folder}\n\nCria pastas e arquivos e cadastra no studio.config.json.`); };
+  $("#f-ep").onsubmit = e => { e.preventDefault(); const b = fd(e.target); call("new-episode", b, `Criar o episódio "${b.episode}" do cliente "${b.slug}"?`, () => setCtx(b.slug, b.episode)); };
+} else {
+  $("#act").innerHTML = `<div class="warn">Esta é a versão catálogo. Para cadastrar clientes, criar episódios, abrir arquivos e rodar o doctor por aqui, abra o painel: dois cliques no <span class="code">Arsenal.bat</span> ou <span class="code">python tools/studio.py arsenal --serve</span></div>`;
+}
+
+/* ---------- tools */
+$("#cli").innerHTML = C.cli.map(c => `<li><span class="code">${esc(c.cmd.split(" ")[0])}</span><div class="c2">${esc(c.what)}<small>python tools/studio.py ${esc(c.cmd)}</small></div></li>`).join("");
+$("#tools").innerHTML = C.tools.map(t => `<li><span class="code">${esc(t.file)}</span><span class="c2">${esc(t.doc)}</span></li>`).join("");
+
+/* ---------- draw */
+function drawAll(){ drawHero(); drawClients(); }
+
+/* ---------- views: Cliente (this PC's work) / Geral (the catalog, the same for every client) */
+const NAV = {cliente: [["agora","Agora"],["clientes","Clientes"]], geral: [["pipeline","Pipeline"],["receitas","Receitas"],["skills","Skills"],["ferramentas","Ferramentas"]]};
+const SEC = {agora:"cliente", clientes:"cliente", pipeline:"geral", receitas:"geral", skills:"geral", ferramentas:"geral"};
+let view = "cliente";
+function showView(v, keepScroll){
+  view = v; store.set("arsenal-view", v);
+  document.querySelectorAll(".tabs [data-view]").forEach(b => b.setAttribute("aria-selected", b.dataset.view === v));
+  $("#v-cliente").hidden = v !== "cliente"; $("#v-geral").hidden = v !== "geral"; $("#ctx").hidden = v !== "cliente";
+  $("#nav").innerHTML = NAV[v].map(([id, lab]) => `<a href="#${id}">${lab}</a>`).join("");
+  if (v === "geral") pick(cur);
+  if (!keepScroll) scrollTo(0, 0);
+}
+document.querySelector(".tabs").addEventListener("click", e => { const b = e.target.closest("[data-view]"); if (b){ showView(b.dataset.view); history.replaceState(null, "", "#" + b.dataset.view); } });
+$(".brand").onclick = e => { e.preventDefault(); showView("cliente"); };
+function fromHash(){ const h = location.hash.slice(1); const v = h === "geral" || h === "cliente" ? h : SEC[h]; if (v) showView(v, !!SEC[h]); }
+addEventListener("hashchange", fromHash);
+
+drawCtx(); drawFilters(); drawRecipes(); drawCards(); drawAll();
+showView(store.get("arsenal-view") === "geral" ? "geral" : "cliente"); fromHash();
+drawDoctor(PC.doctor);
+if (D.serve && PC.doctor.ok === null) runDoctor();
+</script>
+</body>
+</html>

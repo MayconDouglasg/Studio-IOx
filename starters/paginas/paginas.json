@@ -1,0 +1,117 @@
+{
+ "_leia": "Example for the starter (neutral test voice). One page per spoken topic. Every 'palavra' is a word (or a few words) as said in words.json: the exact word wins, a 5-letter prefix is only a fallback, and a page's words are searched from 1.5 s before its arrival (a repeated word does not land on an earlier page). The camera ARRIVES on the page's 'palavra'. Page 0 is on screen from abre_s (default 0: frame 0; for an insert over the presenter, the second it starts): the camera starts close on its diagram and pulls back. trans of a page = how the camera gets there: rota (visible route, default) | empurrao (short straight push) | zoom-blur (cut with zoom blur). Diagram types: GALHO (novo = one branch, novos = [..] a fan of branches), GRADE-ONDA (itens as text, or {texto, palavra} = that card lights on its own word), NOS, PAINEL-CONSULTA, CHECKLIST (see the storyboard skill). titulo.glitch = glitch punctuation. formato / fps / duracao / abre_s / abre_zoom are optional (default: client.json frame, 60 fps, last word + fim, 0, 2.2).",
+ "formato": [
+  1080,
+  1920
+ ],
+ "fps": 60,
+ "paginas": [
+  {
+   "etiqueta": {
+    "texto": "cada assunto",
+    "palavra": "assunto"
+   },
+   "titulo": {
+    "texto": "Página",
+    "palavra": "página"
+   },
+   "serifa": {
+    "texto": "nova",
+    "palavra": "nova"
+   },
+   "diagrama": {
+    "tipo": "GALHO",
+    "nos": [
+     "um assunto",
+     "",
+     ""
+    ],
+    "novos": [
+     "nova",
+     "mais uma"
+    ],
+    "palavra": "nova"
+   }
+  },
+  {
+   "palavra": "câmera",
+   "trans": "rota",
+   "etiqueta": {
+    "texto": "a câmera viaja",
+    "palavra": "viaja"
+   },
+   "titulo": {
+    "texto": "Palavra",
+    "palavra": "palavra"
+   },
+   "serifa": {
+    "texto": "em onda",
+    "palavra": "em onda"
+   },
+   "diagrama": {
+    "tipo": "GRADE-ONDA",
+    "itens": [
+     {
+      "texto": "Item A",
+      "palavra": "cartões"
+     },
+     "Item B",
+     "Item C",
+     "Item D",
+     "Item E",
+     "Item F"
+    ],
+    "palavra": "acendem"
+   }
+  },
+  {
+   "palavra": "dois pontos",
+   "trans": "rota",
+   "etiqueta": {
+    "texto": "dois pontos",
+    "palavra": "pontos"
+   },
+   "diagrama": {
+    "tipo": "NOS",
+    "a": "A",
+    "b": "B",
+    "ponte": "PONTE",
+    "nota": "se ligam com uma ponte",
+    "palavras": {
+     "a": "dois",
+     "b": "pontos",
+     "liga": "ligam",
+     "ponte": "ponte"
+    }
+   }
+  },
+  {
+   "palavra": "depois",
+   "trans": "rota",
+   "etiqueta": {
+    "texto": "a busca confere",
+    "palavra": "busca"
+   },
+   "diagrama": {
+    "tipo": "PAINEL-CONSULTA",
+    "busca": "cada item",
+    "marca": "item",
+    "titulo_lista": "itens",
+    "itens": [
+     "Item um",
+     "Item dois",
+     "Item três"
+    ],
+    "sub": "conferido",
+    "carimbo": "Organizado",
+    "palavras": {
+     "busca": "busca",
+     "marca": "item",
+     "varre": "confere",
+     "itens": "e tudo",
+     "carimbo": "organizado"
+    }
+   }
+  }
+ ]
+}

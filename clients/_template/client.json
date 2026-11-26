@@ -1,0 +1,198 @@
+{
+  "slug": "",
+  "name": "",
+  "language": "pt-PT",
+  "frame": [
+    1920,
+    1080
+  ],
+  "fps": 29.97,
+  "colors": {
+    "paper": "#F2F2F2",
+    "ink": "#111111",
+    "accent": "#E4572E",
+    "on_camera": "#FFFFFF",
+    "money": "#2BA84A"
+  },
+  "fonts": {
+    "key": {
+      "family": "Arial",
+      "weight": 900,
+      "italic": false,
+      "ps": [
+        "Arial-Black",
+        "Arial-BoldMT"
+      ],
+      "tracking": -30,
+      "file": ""
+    },
+    "ser": {
+      "family": "Georgia",
+      "weight": 700,
+      "italic": true,
+      "ps": [
+        "Georgia-BoldItalic",
+        "Georgia-Italic"
+      ],
+      "tracking": -10,
+      "file": ""
+    },
+    "sm": {
+      "family": "Arial",
+      "weight": 600,
+      "italic": false,
+      "ps": [
+        "Arial-BoldMT",
+        "ArialMT"
+      ],
+      "tracking": -10,
+      "file": ""
+    }
+  },
+  "google_fonts": "",
+  "transcribe_prompt": "Vídeo do YouTube em português.",
+  "decup": {
+    "roles": {
+      "frontal": [],
+      "lateral": [],
+      "tela": [
+        "Gravação do ecrã*",
+        "Screen Recording*",
+        "Gravação de Tela*"
+      ]
+    },
+    "master_audio": "frontal",
+    "home_camera": "frontal",
+    "pad_in_s": 0.05,
+    "pad_out_s": 0.035,
+    "inner_gap_s": 0.25,
+    "settle": 0.12,
+    "transcribe": "chunks",
+    "chunk_silence_s": 0.45,
+    "alucinacoes": [],
+    "esticada_s": 0.6,
+    "muletas": [
+      "e",
+      "ou",
+      "mas",
+      "então",
+      "portanto",
+      "pronto",
+      "ok",
+      "basicamente"
+    ],
+    "muleta_pausa_s": 0.3,
+    "narra_clique": [
+      "\\bvou (clicar|carregar|selecionar|escolher|abrir|meter|por|colocar|escrever|dizer que quero)\\b",
+      "\\b(clico|carrego|seleciono|escolho|abro)\\b",
+      "\\baqui (eu )?vou\\b"
+    ],
+    "sequence_size": [
+      1920,
+      1080
+    ],
+    "screen_video_enabled": false,
+    "screen_scale": "fit",
+    "study_roles": {}
+  },
+  "camera_switch": {
+    "enabled": false,
+    "insert_median_s": 2.3,
+    "insert_range_s": [
+      1.3,
+      3.5
+    ],
+    "home_between_s": [
+      4.0,
+      5.6
+    ],
+    "lead_s": 0.1,
+    "skip_first_s": 0,
+    "never_during_screen": true
+  },
+  "modo_apresentador": "sobre",
+  "caminho_padrao": "after",
+  "ritmo": {
+    "modo": "calmo",
+    "entrada_s": 0.8,
+    "novo_a_cada_s": 3.0,
+    "viagem_s": 0.6,
+    "fim_s": 0.8
+  },
+  "grade": {
+    "margem": 0.08,
+    "alinhamento": "esquerda",
+    "hierarquia": [
+      "etiqueta",
+      "titulo",
+      "serifa",
+      "diagrama"
+    ],
+    "sublinhado": false,
+    "etiqueta_maiusculas": true
+  },
+  "motion": {
+    "intensity": 1.0,
+    "transitions": [
+      "wipe",
+      "whip",
+      "cut",
+      "iris"
+    ],
+    "long_scene_s": 6
+  },
+  "sfx": {
+    "intensidade": "auto",
+    "excluir": [],
+    "incluir": [],
+    "ganho_db": 0,
+    "musica": ""
+  },
+  "apoio": {
+    "sources": [
+      "local",
+      "magnific",
+      "pexels",
+      "pixabay",
+      "ia"
+    ],
+    "local_dirs": [
+      "APOIO",
+      "acervo",
+      "broll"
+    ],
+    "prefer": "video",
+    "min_gap_s": 4,
+    "max_per_min": 6,
+    "clip_s": [
+      2,
+      5
+    ],
+    "lang": "pt",
+    "regiao": {
+      "en": "",
+      "pt": ""
+    },
+    "regional_padrao": false
+  },
+  "qa": {
+    "lufs": -14.0,
+    "lufs_tol": 1.0,
+    "true_peak_db": -1.0,
+    "delivery": {},
+    "black_s": 0.08,
+    "black_end_ok_s": 2.0,
+    "freeze_s": 3.0,
+    "min_clip_frames": 4,
+    "repeat_min_words": 3,
+    "word_cut_p": 0.7,
+    "safe_title": 0.9,
+    "contrast_min": 4.5,
+    "contrast_large": 3.0,
+    "large_text_h": 0.025,
+    "offpalette_min_area": 0.003
+  },
+  "_qa_note": "tools/check.py thresholds (report only; defaults in QA there). render: lufs +/- lufs_tol = integrated loudness target, true_peak_db = ceiling; delivery = what the final file must be, e.g. {\"codec\": \"prores\", \"profile\": \"HQ\", \"size\": [3840, 2160], \"fps\": 29.97} (empty = size from frame, fps from fps, codec not checked); black_s = shortest black counted (a black tail up to black_end_ok_s is a fade-out); freeze_s = shortest frozen picture counted. decup: min_clip_frames = an enabled clip shorter than this is a flash; repeat_min_words = the same n words twice in a row; word_cut_p = a word heard across a join or at a loud cut below this Whisper confidence counts as chopped. frames: safe_title = centred fraction of the frame text must stay inside; contrast_min / contrast_large = WCAG ratio of text vs what is around it (large = glyph >= large_text_h of the frame height); offpalette_min_area = a flat area in a colour not in colors (nor a mix / tint / shade) counts from this fraction of the frame.",
+  "_notes": "NEUTRAL PLACEHOLDERS - replace every value for the client (novo-cliente skill) and delete _template. Prose rules live in STYLE.md. 'ps' = PostScript names tried in order in After Effects (first installed wins). decup.roles = file-name patterns per camera; decup.settle = how far the voice must decay before a cut point (fraction of the speech range above the floor; null = off); decup.inner_gap_s = shortest pause removed inside a sentence; study_roles = extra patterns for edit_study (generated b-roll, logo sting). decup.transcribe: chunks (split at silences >= chunk_silence_s, each chunk transcribed alone, word times aligned to the voice) | whole. Second pass (decup.py polish): esticada_s = a word Whisper stretched past this hides a hesitation, its start is cut (null = off); muletas = crutch words/phrases proposed when they open a breath group (pause >= muleta_pausa_s) or dangle at its end (Claude decides); narra_clique = regexes (accent-less text) of short lines that only narrate a click, marked REVER. sequence_size = Premiere sequence [w, h] (e.g. [3840, 2160] for 4K); screen_video_enabled = screen recording video on in the XML (audio always off); screen_scale fit | fill. camera_switch numbers come from tools/edit_study.py on the editor's final cut. motion.intensity: 1 = calm baseline, 1.5 = bolder. apoio = imagens-apoio skill: source order (each skipped when its key is missing), client footage folders relative to the client folder, prefer video|photo, spacing between moments, clip length range, search language for Pixabay, regiao = the client's country added to the queries of moments marked regional (places, money, government, documents; regional_padrao true = every moment). fonts.<role>.file = font file for the code path (relative to the client folder, e.g. brand/fonts/X.ttf; empty = the installed family). modo_apresentador = where the presenter is: sobre (motion over the talking head, the default), bolha (presenter in a round bubble inside the motion), tela_dividida (split screen), so_voz (no presenter: full motion under the voice). caminho_padrao = default path of a scene (after | codigo | ia; the storyboard can change it per scene). ritmo: calmo (entrada_s 0.8, novo_a_cada_s 3, viagem_s 0.6) or dinamico (0.45 / 1.5 / 0.45); entrada_s = length of one entrance, novo_a_cada_s = longest gap without something new on screen, viagem_s = camera travel between blocks, fim_s = closing pull-out. sfx = sound of the motion (tools/sfx.py): intensidade auto (from motion.intensity: < 1.15 subtil, < 1.4 medio, else forte) | subtil | medio | forte (a brief that asks for simple, never exaggerated motion = subtil); excluir = more library folders to leave out (e.g. '01_Transicoes/Risers'); incluir = switch on what is off by default (themes 'horror', 'armas', or a folder such as '15_Memes_Cartoon_Famosos'); ganho_db = level offset of every cue; musica = a licensed bed file (relative to the episode or absolute), 20 dB under the voice. grade = the fixed layout grid every block shares: margem (fraction of the frame's short side), alinhamento (esquerda | centro), hierarquia (order of a block, top to bottom), sublinhado (accent bar under the title), etiqueta_maiusculas.",
+  "_template": true
+}

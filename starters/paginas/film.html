@@ -1,0 +1,417 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Páginas + rota</title>
+<style>
+html,body{margin:0;background:#000;overflow:hidden}
+html.alpha,body.alpha{background:transparent}
+canvas{display:block}
+body:not(.render) canvas{height:100vh;width:auto;margin:0 auto;cursor:pointer}
+</style>
+</head>
+<body>
+<canvas id="c" width="1080" height="1920"></canvas>
+<script>
+// ======================================================================
+//  STARTER "páginas + rota" (code path, see the storyboard skill, scene type PAGINAS).
+//  One continuous world: every spoken topic is a page on a large dotted plane; the camera
+//  travels a visible route from page to page, ARRIVES ON THE SPOKEN WORD and never stops.
+//  Everything comes from files in this folder:
+//    client.json   colors + fonts + ritmo + grade (copied from the client by tools/codigo.py)
+//    words.json    [{w, s, e}] word timestamps of the voice (tools/codigo.py palavras)
+//    paginas.json  the pages: etiqueta / titulo / serifa / diagrama, each anchored to a word
+//  Pure function of time: window.seek(t) paints frame t. No timers, no Math.random.
+//  ?alpha=1 paints no world (transparent background) for the ProRes 4444 export.
+// ======================================================================
+const Q = new URLSearchParams(location.search);
+const RENDER = Q.has('render'), ALPHA = Q.has('alpha');
+if (RENDER) document.body.classList.add('render');
+if (ALPHA) { document.body.classList.add("alpha"); document.documentElement.classList.add("alpha"); }
+const SUBS = +(Q.get('subs') || (RENDER ? 6 : 1));
+let W = 1080, H = 1920, FPS = 60, DUR = 10, SHUTTER = 0.5 / 60;
+
+const cv = document.getElementById('c'), out = cv.getContext('2d');
+const sc = document.createElement('canvas'), tmp = document.createElement('canvas');
+let ctx = sc.getContext('2d');
+const sctx = ctx, tctx = tmp.getContext('2d');
+
+// ---------------------------------------------------------------- math (pure)
+const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
+const lerp = (a, b, k) => a + (b - a) * k;
+const prog = (t, a, d) => clamp((t - a) / Math.max(1e-6, d), 0, 1);
+const oCub = k => 1 - Math.pow(1 - k, 3);
+const oExp = k => k >= 1 ? 1 : 1 - Math.pow(2, -10 * k);
+const ioCub = k => k < .5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2;
+const oBack = (k, s = 1.6) => 1 + (s + 1) * Math.pow(k - 1, 3) + s * Math.pow(k - 1, 2);
+const hash = (i, s) => { let h = (i * 374761393 + s * 668265263) | 0; h = Math.imul(h ^ h >>> 13, 1274126177); return ((h ^ h >>> 16) >>> 0) / 4294967296; };
+
+// ---------------------------------------------------------------- client tokens -> palette (ONLY client colors and mixes of them)
+let CJ, P, R, G, PG, WORDS = [], TL = [];
+function rgb(h) { h = h.replace('#', ''); return [0, 2, 4].map(i => parseInt(h.substr(i, 2), 16)); }
+function mix(a, b, k) { const A = rgb(a), B = rgb(b); return '#' + A.map((v, i) => Math.round(lerp(v, B[i], k)).toString(16).padStart(2, '0')).join(''); }
+function rgba(h, a) { const c = rgb(h); return `rgba(${c[0]},${c[1]},${c[2]},${a})`; }
+function palette(c) {
+  return { paper: c.paper, ink: c.ink, acc: c.accent,
+    world: mix(c.paper, c.ink, 0.05), dot: mix(c.paper, c.ink, 0.13), grey: mix(c.ink, c.paper, 0.48),
+    line: mix(c.paper, c.ink, 0.08), accT: mix(c.paper, c.accent, 0.16), accT2: mix(c.paper, c.accent, 0.07), shadow: rgba(c.ink, 0.13) };
+}
+
+// ---------------------------------------------------------------- type (roles key / ser / sm from client.json fonts)
+const FONT = {};
+async function loadFonts(f) {
+  for (const role of ['key', 'ser', 'sm']) {
+    const d = f[role], style = d.italic ? 'italic' : 'normal', weight = String(d.weight || 400);
+    if (d.file) {
+      const ff = new FontFace('F_' + role, `url("fonts/${d.file.split(/[\\/]/).pop()}")`, { style, weight });
+      try { await ff.load(); document.fonts.add(ff); FONT[role] = { fam: 'F_' + role, style, weight, tr: (d.tracking || 0) / 1000 }; continue; }
+      catch (e) { console.error('font file not loaded: ' + d.file); }
+    }
+    FONT[role] = { fam: `"${d.family}"`, style, weight, tr: (d.tracking || 0) / 1000 };
+    try { await document.fonts.load(`${style} ${weight} 100px "${d.family}"`); } catch (e) {}
+  }
+}
+function face(role, px) { const f = FONT[role]; ctx.font = `${f.style} ${f.weight} ${px}px ${f.fam}`; ctx.letterSpacing = `${px * f.tr}px`; }
+function text(s, x, y, c, al = 'left') { ctx.fillStyle = c; ctx.textAlign = al; ctx.textBaseline = 'alphabetic'; ctx.fillText(s, x, y); }
+function widthAt(role, s, px) { face(role, px); return ctx.measureText(s).width; }
+function fit(role, s, px, maxW) { const w = widthAt(role, s, px); return w > maxW ? px * maxW / w : px; }
+function rr(x, y, w, h, r) { ctx.beginPath(); ctx.roundRect(x, y, w, h, r); }
+function at(x, y, s, r, fn) { ctx.save(); ctx.translate(x, y); if (r) ctx.rotate(r); if (s !== 1) ctx.scale(s, s); fn(); ctx.restore(); }
+function shadow(fn, lift = 1) { ctx.save(); ctx.shadowColor = P.shadow; ctx.shadowBlur = 44 * lift; ctx.shadowOffsetY = 20 * lift; fn(); ctx.restore(); }
+function check(x, y, s, k, c) { ctx.save(); ctx.lineWidth = 7 * s; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.strokeStyle = c; ctx.setLineDash([42 * s * k, 9999]);
+  ctx.beginPath(); ctx.moveTo(x - 11 * s, y); ctx.lineTo(x - 3 * s, y + 9 * s); ctx.lineTo(x + 13 * s, y - 9 * s); ctx.stroke(); ctx.restore(); }
+function clickRing(x, y, k) { if (k <= 0 || k >= 1) return; ctx.save(); ctx.globalAlpha *= 1 - k; ctx.strokeStyle = P.acc; ctx.lineWidth = 10 * (1 - k) + 2; ctx.beginPath(); ctx.arc(x, y, 30 + 90 * oCub(k), 0, 7); ctx.stroke(); ctx.restore(); }
+function rise(s, x, y, k, c, role, px, al) {                    // type rises into place from a mask line
+  if (k <= 0) return; face(role, px);
+  ctx.save(); ctx.beginPath(); ctx.rect(-4000, y - px * 1.05, 9000, px * 1.4); ctx.clip();
+  text(s, x, y + px * 1.1 * (1 - oExp(k)), c, al); ctx.restore();
+}
+
+// ---------------------------------------------------------------- words -> times (accent-insensitive, 5-letter prefix)
+const norm = s => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9%]+/g, ' ').trim();
+const exact = (a, b) => a === b;
+const prefix = (a, b) => {                                       // shared start of >= 5 letters AND >= 70 % of the shorter word
+  if (a === b) return true; let n = 0; while (n < a.length && n < b.length && a[n] === b[n]) n++;
+  return n >= 5 && n >= 0.7 * Math.min(a.length, b.length); };
+function wordAt(phrase, from) {                                   // start time of `phrase` said after `from`
+  const p = norm(phrase).split(' ').filter(Boolean); if (!p.length) return null;
+  for (const same of [exact, prefix]) {                           // the exact word first; the 5-letter prefix only as a fallback
+    for (let i = 0; i < WORDS.length; i++) {                      // ("diferença" must not land on an earlier "diferentes")
+      if (WORDS[i].s < from - 0.05) continue;
+      let ok = true; for (let k = 0; k < p.length; k++) if (!WORDS[i + k] || !same(norm(WORDS[i + k].w), p[k])) { ok = false; break; }
+      if (ok) return WORDS[i].s;
+    }
+  }
+  console.error('word not found: "' + phrase + '" after ' + from.toFixed(2) + ' s'); return null;
+}
+const ev = (t, tipo, extra) => { if (t !== null && t !== undefined) TL.push(Object.assign({ t: +t.toFixed(3), tipo }, extra || {})); return t; };
+
+// ---------------------------------------------------------------- grid (client.json grade): same margin, alignment and hierarchy on every page
+function layout(pg) {
+  const S = Math.min(W, H), M = G.margem * S, port = H >= W, mid = G.alinhamento === 'centro';
+  const L = { M, mid, port };
+  if (port) { L.tx = mid ? W / 2 : M; L.tw = W - 2 * M; L.ey = 0.17 * H; }
+  else { L.tx = mid ? W * 0.25 + M / 2 : M; L.tw = W * 0.46 - M; L.ey = 0.2 * H; }
+  const hasTitle = !!(pg.titulo || pg.serifa);
+  L.title = Math.min(port ? 0.17 * S : 0.16 * S, 9e9); L.ser = L.title * 0.66; L.eb = 0.037 * S;
+  if (pg.titulo) L.title = fit('key', pg.titulo.texto, L.title, L.tw);
+  if (pg.serifa) L.ser = fit('ser', pg.serifa.texto, L.ser, L.tw);
+  L.tyy = L.ey + L.title * 1.15; L.sy = L.tyy + (pg.titulo ? L.ser * 1.25 : L.ser * 0.5);
+  if (port) { const top = hasTitle ? L.sy + 0.07 * H : L.ey + 0.045 * H; L.box = { x: M, y: top, w: W - 2 * M, h: H - M - top }; }
+  else { L.box = { x: W * 0.5, y: hasTitle ? 0.12 * H : L.ey + 0.06 * H, w: W * 0.5 - M, h: 0 }; L.box.h = H - M - L.box.y; }
+  L.s = Math.min(L.box.w / 888, L.box.h / 900);                   // diagrams are drawn in an 888 x 900 design space
+  L.ox = L.box.x + (L.box.w - 888 * L.s) / 2; L.oy = L.box.y + (L.box.h - 900 * L.s) * 0.4;   // optical centre of the free area
+  return L;
+}
+
+// ---------------------------------------------------------------- page header: etiqueta -> titulo -> serifa
+function header(pg, L, t) {
+  const al = L.mid ? 'center' : 'left', E = R.entrada_s;
+  if (pg.etiqueta && pg._t.etiqueta !== null) {
+    const k = prog(t, pg._t.etiqueta, E * 0.9), e = oExp(k);
+    if (k > 0) { ctx.save(); ctx.globalAlpha = clamp(k * 3, 0, 1); const s = G.etiqueta_maiusculas ? pg.etiqueta.texto.toUpperCase() : pg.etiqueta.texto;
+      face('sm', L.eb); const tw = ctx.measureText(s).width, bw = L.eb * 1.4, x0 = L.mid ? L.tx - (tw + bw + L.eb * 0.5) / 2 : L.tx;
+      ctx.fillStyle = P.acc; ctx.fillRect(x0, L.ey - L.eb * 0.75, bw * e, L.eb * 0.2);
+      text(s, x0 + bw + L.eb * 0.5, L.ey - L.eb * 0.35 + L.eb * 0.5 * (1 - e), P.acc); ctx.restore(); }
+  }
+  if (pg.titulo && pg._t.titulo !== null) {
+    const k = prog(t, pg._t.titulo, E), x = L.mid ? L.tx : L.tx - L.title * 0.03;
+    if (pg.titulo.glitch && k > 0 && k < 1) {                    // GLITCH punctuation: offset copies in the client's own colors
+      const fi = Math.floor(t * 30), ox = (hash(fi, 7) - 0.5) * L.title * 0.25;
+      ctx.save(); ctx.globalAlpha = 0.85 * (1 - k); rise(pg.titulo.texto, x + ox, L.tyy, 1, P.acc, 'key', L.title, al); rise(pg.titulo.texto, x - ox, L.tyy + 4, 1, P.grey, 'key', L.title, al); ctx.restore();
+    }
+    rise(pg.titulo.texto, x, L.tyy, k, P.ink, 'key', L.title, al);
+    if (G.sublinhado) { const u = oCub(prog(t, pg._t.titulo + E * 0.3, E * 0.8)); if (u > 0) { const tw = widthAt('key', pg.titulo.texto, L.title);
+      ctx.fillStyle = P.acc; ctx.fillRect(L.mid ? L.tx - tw / 2 : L.tx, L.tyy + L.title * 0.18, tw * u, L.title * 0.09); } }
+  }
+  if (pg.serifa && pg._t.serifa !== null) rise(pg.serifa.texto, L.tx, L.sy, prog(t, pg._t.serifa, E), P.acc, 'ser', L.ser, al);
+}
+
+// ---------------------------------------------------------------- diagrams (888 x 900 design space). Each: build(t) and focus() for the opening
+const DIAG = {
+  GALHO: {                                         // line of nodes that grows a new branch on its word ("one more front")
+    focus: () => [40, 560],
+    draw(d, t, tA, T) {
+      const y0 = 560, tk = oCub(prog(t, tA, 0.9)), nos = d.nos || ['', '', ''], n = nos.length, dx = (d.novos ? 280 : 520) / Math.max(1, n - 1);
+      ctx.save(); ctx.lineCap = 'round';
+      ctx.strokeStyle = P.line; ctx.lineWidth = 14; ctx.beginPath(); ctx.moveTo(0, y0); ctx.lineTo((d.novos ? 40 + (n - 1) * dx : 600) * tk, y0); ctx.stroke();
+      nos.forEach((lab, i) => { const x = 40 + i * dx, k = prog(t, tA + i * 0.35, 0.3); if (k <= 0) return;
+        at(x, y0, oBack(k, 2), 0, () => { ctx.beginPath(); ctx.arc(0, 0, 30, 0, 7); ctx.fillStyle = P.paper; ctx.fill(); ctx.lineWidth = 10; ctx.strokeStyle = P.ink; ctx.stroke(); });
+        if (lab) { face('sm', 38); ctx.globalAlpha = clamp(k * 2, 0, 1); text(lab, x - 40, y0 + 92, P.grey); ctx.globalAlpha = 1; } });
+      const tb = T.novo ?? tA + 1.2, bk = ioCub(prog(t, tb, 0.6)), xe = 40 + (n - 1) * dx;
+      if (d.novos) {                                // fan: one branch per new option, staggered, filling the area
+        const m = d.novos.length, sp = Math.min(300, 640 / Math.max(1, m - 1));
+        d.novos.forEach((lab, j) => { const dy = (j - (m - 1) / 2) * sp, kj = ioCub(prog(t, tb + j * 0.22, 0.55)), nj = prog(t, tb + j * 0.22 + 0.4, 0.35);
+          if (kj > 0) { ctx.strokeStyle = P.acc; ctx.lineWidth = 14; ctx.setLineDash([900 * kj, 9999]); ctx.beginPath(); ctx.moveTo(xe, y0);
+            ctx.bezierCurveTo(xe + 130, y0, xe + 110, y0 + dy, xe + 230, y0 + dy); ctx.stroke(); ctx.setLineDash([]); }
+          if (nj > 0) { at(xe + 250, y0 + dy, oBack(nj, 2.2), 0, () => { shadow(() => { ctx.beginPath(); ctx.arc(0, 0, 56, 0, 7); ctx.fillStyle = P.acc; ctx.fill(); });
+              ctx.strokeStyle = P.paper; ctx.lineWidth = 11; ctx.beginPath(); ctx.moveTo(-21, 0); ctx.lineTo(21, 0); ctx.moveTo(0, -21); ctx.lineTo(0, 21); ctx.stroke(); });
+            if (lab) { ctx.save(); ctx.globalAlpha = clamp(nj * 2, 0, 1); face('key', fit('key', lab, 50, 270)); text(lab, xe + 330, y0 + dy + 18, P.ink); ctx.restore(); } } });
+        ctx.restore(); return;
+      }
+      if (bk > 0) { ctx.strokeStyle = P.acc; ctx.lineWidth = 14; ctx.setLineDash([900 * bk, 9999]);
+        ctx.beginPath(); ctx.moveTo(xe, y0); ctx.bezierCurveTo(xe + 140, y0, xe + 140, y0 - 260, xe + 230, y0 - 260); ctx.stroke(); ctx.setLineDash([]); }
+      const nk = prog(t, tb + 0.45, 0.35);
+      if (nk > 0) at(xe + 240, y0 - 260, oBack(nk, 2.2), 0, () => {
+        shadow(() => { ctx.beginPath(); ctx.arc(0, 0, 70, 0, 7); ctx.fillStyle = P.acc; ctx.fill(); });
+        ctx.strokeStyle = P.paper; ctx.lineWidth = 12; ctx.beginPath(); ctx.moveTo(-26, 0); ctx.lineTo(26, 0); ctx.moveTo(0, -26); ctx.lineTo(0, 26); ctx.stroke(); });
+      ctx.restore();
+      if (nk > 0 && d.novo) { ctx.save(); ctx.globalAlpha = clamp(nk * 2, 0, 1); face('sm', 38); text(d.novo, xe + 240, y0 - 130, P.acc, 'center'); ctx.restore(); }
+    },
+    times(d, from) { return { novo: d.palavra ? ev(wordAt(d.palavra, from), 'galho') : null }; },
+  },
+  'GRADE-ONDA': {                                   // isometric grid of cards that light up in a wave on the word
+    focus: () => [444, 450],
+    draw(d, t, tA, T) {
+      const it = d.itens && d.itens.length ? d.itens : [''], cols = d.colunas || 3, rows = d.linhas || 4, tl = t - tA;
+      const g = 30, cw = Math.min(380, (800 - (cols - 1) * g) / cols), ch = Math.min(240, (820 - (rows - 1) * g) / rows), gw = cols * cw + (cols - 1) * g, gh = rows * ch + (rows - 1) * g, tw = T.onda ?? tA + 1.2;
+      const a = 0.92, b = -0.12 + 0.006 * tl, c2 = 0.30 - 0.01 * tl, dd = 0.82, f = Math.min(880 / (a * gw + Math.abs(c2) * gh), 880 / (Math.abs(b) * gw + dd * gh));
+      ctx.save(); ctx.translate(444, 450); ctx.scale(f, f); ctx.transform(a, b, c2, dd, 0, 0);
+      for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+        const i = r * cols + c, x = -gw / 2 + c * (cw + g), y = -gh / 2 + r * (ch + g);
+        const ap = oExp(prog(t, tA - 0.2 + i * 0.045, 0.45)); if (ap <= 0) continue;
+        const ti = T.itens && T.itens[i % it.length] != null ? T.itens[i % it.length] : tw + r * 0.1 + c * 0.04;
+        const lk = prog(t, ti, 0.3), on = lk > 0, lift = 26 * Math.sin(Math.PI * clamp(lk * 1.4, 0, 1)) + 60 * (1 - ap);
+        ctx.save(); ctx.globalAlpha = clamp(ap * 2, 0, 1); ctx.translate(x - lift * 0.5, y - lift);
+        shadow(() => { rr(0, 0, cw, ch, 24); ctx.fillStyle = on ? P.acc : P.paper; ctx.fill(); }, on ? 1.2 : 0.6);
+        const fs = Math.min(54, ch * 0.3), cy = Math.min(ch * 0.42, 30 + fs * 0.6); ctx.beginPath(); ctx.arc(24 + fs * 0.55, cy, fs * 0.5, 0, 7); ctx.fillStyle = on ? P.paper : P.accT; ctx.fill();
+        const lab = String(typeof it[i % it.length] === 'object' ? it[i % it.length].texto : it[i % it.length]); face('key', fit('key', lab, fs, cw - 60 - fs * 1.3)); text(lab, 40 + fs * 1.2, cy + fs * 0.36, on ? P.paper : P.ink);
+        ctx.fillStyle = on ? rgba(CJ.colors.paper, 0.5) : P.line; ctx.fillRect(24, ch - 66, cw * 0.62, 14); ctx.fillRect(24, ch - 40, cw * 0.4, 14);
+        ctx.restore();
+      }
+      ctx.restore();
+    },
+    times(d, from) { const t = d.palavra ? wordAt(d.palavra, from) : null; if (t !== null) ev(t, 'onda', { n: (d.linhas || 4) });
+      const itens = (d.itens || []).map(o => (o && typeof o === 'object' && o.palavra) ? ev(wordAt(o.palavra, from), 'check') : null);   // per-card light on its own word
+      return { onda: t, itens }; },
+  },
+  NOS: {                                            // two nodes joined by a connector that draws itself, and a bridge pill
+    focus: () => [240, 190],
+    draw(d, t, tA, T) {
+      const A = [240, 190], B = [650, 640], ta = T.a ?? tA, tb = T.b ?? ta + 0.5, tl = T.liga ?? tb + 0.35, tp = T.ponte ?? tl + 0.5;
+      const lk = ioCub(prog(t, tl, 0.5));
+      if (lk > 0) { ctx.save(); ctx.strokeStyle = P.acc; ctx.lineWidth = 16; ctx.lineCap = 'round'; ctx.setLineDash([2, 30]);
+        ctx.beginPath(); ctx.moveTo(A[0], A[1]); ctx.lineTo(lerp(A[0], B[0], lk), lerp(A[1], B[1], lk)); ctx.stroke(); ctx.restore(); }
+      const ak = prog(t, ta, 0.4);
+      if (ak > 0) at(A[0], A[1], oBack(ak, 1.8), 0, () => { shadow(() => { ctx.beginPath(); ctx.arc(0, 0, 170, 0, 7); ctx.fillStyle = P.acc; ctx.fill(); }, 1.3);
+        const px = fit('key', d.a || '', 76, 280); face('key', px); text(d.a || '', 0, px * 0.35, P.paper, 'center'); });
+      const bk = prog(t, tb, 0.4);
+      if (bk > 0) at(B[0], B[1], oBack(bk, 1.8), 0, () => { shadow(() => { ctx.beginPath(); ctx.arc(0, 0, 140, 0, 7); ctx.fillStyle = P.paper; ctx.fill(); });
+        ctx.lineWidth = 12; ctx.strokeStyle = P.ink; ctx.beginPath(); ctx.arc(0, 0, 140, 0, 7); ctx.stroke();
+        const px = fit('key', d.b || '', 70, 220); face('key', px); text(d.b || '', 0, px * 0.35, P.ink, 'center'); });
+      const pk = prog(t, tp, 0.35);
+      if (pk > 0 && d.ponte) at(lerp(A[0], B[0], 0.5) + 30, lerp(A[1], B[1], 0.5), oBack(pk, 2.2), -0.04, () => {
+        const px = fit('key', d.ponte, 60, 340), w = widthAt('key', d.ponte, px) + 150;
+        shadow(() => { rr(-w / 2, -72, w, 144, 72); ctx.fillStyle = P.ink; ctx.fill(); }, 1.2);
+        ctx.beginPath(); ctx.arc(-w / 2 + 72, 0, 44, 0, 7); ctx.fillStyle = P.acc; ctx.fill(); face('key', px); text(d.ponte, -w / 2 + 132, px * 0.35, P.paper); });
+      if (d.nota) { const fk = oExp(prog(t, tp + 0.1, 0.5)); if (fk > 0) { ctx.save(); ctx.globalAlpha = fk; face('sm', 40); text(d.nota, 0, 880 + 20 * (1 - fk), P.grey); ctx.restore(); } }
+    },
+    times(d, from) { const p = d.palavras || {}, o = {}; for (const k of ['a', 'b', 'liga', 'ponte']) o[k] = p[k] ? ev(wordAt(p[k], from), k === 'liga' ? 'liga' : 'no') : null; return o; },
+  },
+  'PAINEL-CONSULTA': {                              // typed search, highlighter, list, scan line, checks, stamp
+    focus: () => [120, 64],
+    draw(d, t, tA, T) {
+      const pk = oExp(prog(t, tA - 0.1, 0.55)), its = d.itens || [], n = Math.max(1, its.length), rh = Math.min(170, 440 / n);
+      ctx.save(); ctx.translate(0, 80 * (1 - pk)); ctx.globalAlpha = clamp(pk * 2, 0, 1);
+      shadow(() => { rr(0, 0, 888, 770, 48); ctx.fillStyle = P.paper; ctx.fill(); }, 1.2);
+      const x0 = 56, wIn = 776, q = d.busca || '', tq = T.busca ?? tA + 0.2, nC = clamp(Math.floor((t - tq) * 26), 0, q.length);
+      rr(x0, 50, wIn, 128, 32); ctx.fillStyle = P.accT2; ctx.fill();
+      face('sm', 48); const typed = q.slice(0, nC), mi = d.marca ? q.indexOf(d.marca) : -1;
+      if (mi >= 0) { const hl = oCub(prog(t, T.marca ?? tq + q.length / 26 + 0.2, 0.25)), a = ctx.measureText(q.slice(0, mi)).width, w = ctx.measureText(d.marca).width;
+        if (hl > 0) { rr(x0 + 42 + a - 14, 72, (w + 28) * hl, 84, 14); ctx.fillStyle = P.acc; ctx.fill(); } }
+      if (nC) text(typed, x0 + 42, 131, P.ink);
+      if (t < tq + q.length / 26 + 0.3 && Math.floor(t * 4) % 2 === 0) { ctx.fillStyle = P.acc; ctx.fillRect(x0 + 48 + ctx.measureText(typed).width, 78, 6, 72); }
+      if (d.titulo_lista) { face('sm', 36); text(d.titulo_lista.toUpperCase(), x0, 262, P.grey); }
+      its.forEach((o, i) => {
+        const y = 290 + i * rh, rk = oExp(prog(t, tA + 0.15 + i * 0.12, 0.45));
+        ctx.save(); ctx.globalAlpha *= rk; ctx.translate(0, 40 * (1 - rk));
+        const tg = prog(t, (T.itens ?? tA + 1.5) + i * 0.15, 0.3), hh = rh - 22;
+        rr(x0, y, wIn, hh, 28); ctx.fillStyle = tg > 0 ? P.accT2 : P.paper; ctx.fill(); ctx.lineWidth = 3; ctx.strokeStyle = tg > 0 ? P.accT : P.line; ctx.stroke();
+        const px = fit('key', o, Math.min(52, hh * 0.4), wIn - 200); face('key', px); text(o, x0 + 44, y + hh * (d.sub ? 0.5 : 0.6), P.ink);
+        if (d.sub) { face('sm', Math.min(32, hh * 0.24)); text(d.sub, x0 + 44, y + hh * 0.8, P.grey); }
+        const cx = x0 + wIn - 90, cy = y + hh / 2, r = Math.min(44, hh * 0.32);
+        if (tg > 0) at(cx, cy, oBack(tg, 2.2), 0, () => { ctx.beginPath(); ctx.arc(0, 0, r, 0, 7); ctx.fillStyle = P.acc; ctx.fill(); check(0, 0, r / 30, oCub(prog(t, (T.itens ?? tA + 1.5) + 0.05 + i * 0.15, 0.2)), P.paper); });
+        else { ctx.beginPath(); ctx.arc(cx, cy, r, 0, 7); ctx.lineWidth = 4; ctx.strokeStyle = P.line; ctx.stroke(); }
+        clickRing(cx, cy, prog(t, (T.itens ?? tA + 1.5) + i * 0.15, 0.45));
+        ctx.restore();
+      });
+      const sk = prog(t, T.varre ?? -9, 0.85);
+      if (sk > 0 && sk < 1) { const y = 270 + 480 * ioCub(sk), g = ctx.createLinearGradient(0, y - 70, 0, y); g.addColorStop(0, rgba(CJ.colors.accent, 0)); g.addColorStop(1, rgba(CJ.colors.accent, 0.3));
+        ctx.fillStyle = g; ctx.fillRect(0, y - 70, 888, 70); ctx.fillStyle = P.acc; ctx.fillRect(0, y, 888, 6); }
+      ctx.restore();
+      const st = prog(t, T.carimbo ?? 1e9, 0.3);
+      if (st > 0 && d.carimbo) { ctx.save(); ctx.beginPath(); ctx.roundRect(0, 790, 888 * oCub(st), 110, 36); ctx.clip();
+        rr(0, 790, 888, 110, 36); ctx.fillStyle = P.acc; ctx.fill(); const px = fit('key', d.carimbo, 72, 640); face('key', px); text(d.carimbo, 400, 845 + px * 0.35, P.paper, 'center');
+        ctx.beginPath(); ctx.arc(800, 845, 36, 0, 7); ctx.fillStyle = P.paper; ctx.fill(); check(800, 845, 1.2, oCub(prog(t, (T.carimbo ?? 0) + 0.12, 0.25)), P.acc); ctx.restore(); }
+    },
+    times(d, from) { const p = d.palavras || {}, o = {}, kind = { busca: 'digita', marca: 'marca', varre: 'varre', itens: 'check', carimbo: 'carimbo' };
+      for (const k in kind) { o[k] = p[k] ? wordAt(p[k], from) : null; if (o[k] !== null) ev(o[k], kind[k], k === 'busca' ? { n: (d.busca || '').length } : k === 'itens' ? { n: (d.itens || []).length } : null); }
+      return o; },
+  },
+  CHECKLIST: {                                      // rows that check one by one, each on its word
+    focus: () => [90, 120],
+    draw(d, t, tA, T) {
+      const its = d.itens || [], n = Math.max(1, its.length), rh = Math.min(190, 860 / n);
+      its.forEach((o, i) => {
+        const y = 20 + i * rh, rk = oExp(prog(t, tA - 0.1 + i * 0.12, 0.45)), tc = T.rows[i] ?? tA + 0.8 + i * 0.6, ck = prog(t, tc, 0.3);
+        ctx.save(); ctx.globalAlpha *= rk; ctx.translate(40 * (1 - rk), 0);
+        shadow(() => { rr(0, y, 888, rh - 26, 30); ctx.fillStyle = P.paper; ctx.fill(); }, 0.5);
+        const r = Math.min(46, (rh - 26) * 0.3), cy = y + (rh - 26) / 2;
+        if (ck > 0) at(90, cy, oBack(ck, 2.2), 0, () => { ctx.beginPath(); ctx.arc(0, 0, r, 0, 7); ctx.fillStyle = P.acc; ctx.fill(); check(0, 0, r / 30, oCub(prog(t, tc + 0.05, 0.2)), P.paper); });
+        else { ctx.beginPath(); ctx.arc(90, cy, r, 0, 7); ctx.lineWidth = 5; ctx.strokeStyle = P.line; ctx.stroke(); }
+        const s = typeof o === 'string' ? o : o.texto, px = fit('key', s, Math.min(60, (rh - 26) * 0.42), 888 - 220); face('key', px); text(s, 170, cy + px * 0.35, ck > 0 ? P.ink : P.grey);
+        ctx.restore();
+      });
+    },
+    times(d, from) { return { rows: (d.itens || []).map(o => (typeof o === 'object' && o.palavra) ? ev(wordAt(o.palavra, from), 'check') : null) }; },
+  },
+};
+
+// ---------------------------------------------------------------- world: pages on a snake route, camera keys from the word times
+const SNAKE = [[0, 0], [1, 0], [1, 1], [0, 1]];
+function pagePos(k) { const c = SNAKE[k % 4][0], r = Math.floor(k / 2); return [c * W * 1.2, r * H * 1.17]; }
+let KEYS = [], ROUTE = [];
+function resolve(spec) {
+  TL = []; let prev = -0.01;
+  PG = spec.paginas.map((pg, k) => {
+    const o = Object.assign({}, pg), first = pg.palavra || (pg.titulo && pg.titulo.palavra) || (pg.etiqueta && pg.etiqueta.palavra);
+    o.k = k; o.pos = pagePos(k);
+    o.tA = k === 0 ? (spec.abre_s || 0) : (wordAt(first, prev + 0.01) ?? prev + 1.5);    // the camera ARRIVES on this word (page 0: on frame 0)
+    const from = k === 0 ? (spec.abre_s || 0) - 0.3 : Math.max(prev + 0.01, o.tA - 1.5);   // a page's words are said around its arrival, not anywhere after the previous page
+    o._t = {}; for (const r of ['etiqueta', 'titulo', 'serifa']) o._t[r] = pg[r] ? (pg[r].palavra ? wordAt(pg[r].palavra, from) : o.tA + 0.15) : null;
+    if (o._t.titulo !== null && pg.titulo) ev(o._t.titulo, 'titulo');
+    o.L = layout(o); o.D = pg.diagrama ? DIAG[pg.diagrama.tipo] : null;
+    if (pg.diagrama && !o.D) console.error('unknown diagram type ' + pg.diagrama.tipo);
+    o.T = o.D ? o.D.times(pg.diagrama, from) : {};
+    prev = o.tA; return o;
+  });
+  const lastW = WORDS.length ? WORDS[WORDS.length - 1].e : 8;
+  DUR = +(spec.duracao || lastW + Math.max(0.6, R.fim_s * 0.8)).toFixed(3);
+  // camera keys: [t, page, offset, zoom, rot]. Opening: close on page 0's first element, then pull back.
+  KEYS = []; ROUTE = [];
+  const p0 = PG[0], f = p0.D ? p0.D.focus() : [0, 0], fx = p0.L.ox + f[0] * p0.L.s - W / 2, fy = p0.L.oy + f[1] * p0.L.s - H / 2, z0 = spec.abre_zoom || 2.2;
+  const A0 = spec.abre_s || 0; KEYS.push([A0, 0, [fx * 0.85, fy * 0.85], z0, -0.03]);
+  for (let k = 0; k < PG.length; k++) {
+    const pg = PG[k], nx = PG[k + 1], sg = k % 2 ? -1 : 1;
+    const tr = nx ? (nx.trans || 'rota') : null, trav = tr === 'zoom-blur' ? 0.001 : tr === 'empurrao' ? Math.min(0.4, R.viagem_s) : R.viagem_s;
+    const tEnd = nx ? Math.max(pg.tA + 0.35, nx.tA - trav) : DUR - R.fim_s;
+    if (k === 0) KEYS.push([A0 + Math.min(1.0, (tEnd - A0) * 0.5), 0, [0, 0.03 * H], 1.08, -0.01]);
+    else KEYS.push([pg.tA, k, [0, 0.02 * H], 1.06, 0.008 * sg]);
+    KEYS.push([tEnd, k, [0, -0.016 * H], 1.0, -0.006 * sg]);
+    if (nx) { ev(tEnd, tr === 'zoom-blur' ? 'corte' : 'viagem', { dur: +(nx.tA - tEnd).toFixed(3) }); if (tr === 'rota') ROUTE.push([k, k + 1, tEnd, nx.tA]); }
+  }
+  KEYS.push([DUR, PG.length - 1, [0, 0.06 * H], 0.86, 0.012]);     // gentle pull-out: the film never ends on a whip
+  ev(DUR - R.fim_s, 'fim');
+  TL.sort((a, b) => a.t - b.t);
+}
+function camAt(t) {
+  let i = 0; while (i < KEYS.length - 2 && t > KEYS[i + 1][0]) i++;
+  const a = KEYS[i], b = KEYS[i + 1], k = ioCub(prog(t, a[0], b[0] - a[0]));
+  const ca = PG[a[1]].pos, cb = PG[b[1]].pos, jump = a[1] !== b[1];
+  let x = lerp(ca[0] + W / 2 + a[2][0], cb[0] + W / 2 + b[2][0], k), y = lerp(ca[1] + H / 2 + a[2][1], cb[1] + H / 2 + b[2][1], k);
+  let z = a[3] * Math.pow(b[3] / a[3], k);
+  const nx = PG[b[1]];
+  if (jump && (nx.trans || 'rota') === 'rota') z *= 1 - 0.32 * Math.sin(Math.PI * k);   // pull back mid-travel so the route reads
+  const S = Math.min(W, H) / 1080;
+  x += 10 * S * Math.sin(t * 0.9); y += 8 * S * Math.sin(t * 0.7 + 1);                       // constant drift: never a full stop
+  return { x, y, z, r: lerp(a[4], b[4], k) };
+}
+
+function drawWorld(t) {
+  const cam = camAt(t);
+  ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = 1;
+  if (ALPHA) ctx.clearRect(0, 0, W, H); else { ctx.fillStyle = P.world; ctx.fillRect(0, 0, W, H); }
+  ctx.save(); ctx.translate(W / 2, H / 2); ctx.rotate(cam.r); ctx.scale(cam.z, cam.z); ctx.translate(-cam.x, -cam.y);
+  const half = Math.max(W, H) / cam.z, S = Math.min(W, H) / 1080, step = 48 * S;
+  if (!ALPHA) { ctx.fillStyle = P.dot;
+    for (let gx = Math.floor((cam.x - half) / step) * step; gx < cam.x + half; gx += step) for (let gy = Math.floor((cam.y - half) / step) * step; gy < cam.y + half; gy += step) ctx.fillRect(gx - 3 * S, gy - 3 * S, 6 * S, 6 * S); }
+  ctx.save(); ctx.strokeStyle = P.acc; ctx.lineWidth = 10 * S; ctx.lineCap = 'round'; ctx.setLineDash([2 * S, 28 * S]);
+  for (const [a, b, t0, t1] of ROUTE) { const k = prog(t, t0 - 0.1, t1 - t0 + 0.1); if (k <= 0) continue;
+    const pa = [PG[a].pos[0] + W / 2, PG[a].pos[1] + H / 2], pb = [PG[b].pos[0] + W / 2, PG[b].pos[1] + H / 2];
+    ctx.beginPath(); ctx.moveTo(pa[0], pa[1]); ctx.lineTo(lerp(pa[0], pb[0], k), lerp(pa[1], pb[1], k)); ctx.stroke(); }
+  ctx.restore();
+  for (const pg of PG) {
+    const [px, py] = pg.pos;
+    if (Math.abs(px + W / 2 - cam.x) > half + W || Math.abs(py + H / 2 - cam.y) > half + H) continue;
+    ctx.save(); ctx.translate(px, py);
+    shadow(() => { rr(0, 0, W, H, 56 * S); ctx.fillStyle = P.paper; ctx.fill(); }, 1.6 * S);
+    header(pg, pg.L, t);
+    if (pg.D) { ctx.save(); ctx.translate(pg.L.ox, pg.L.oy); ctx.scale(pg.L.s, pg.L.s); pg.D.draw(pg.diagrama, t, pg.k === 0 ? pg.tA - 0.1 : pg.tA - R.viagem_s * 0.6, pg.T); ctx.restore(); }
+    ctx.restore();
+  }
+  ctx.restore();
+}
+function zoomBlurAmount(t) {                         // ZOOM-BLUR: the cut IS the move's blur (the camera is still), never stacked on a travel
+  let a = 0;
+  for (const pg of PG) if (pg.k > 0 && pg.trans === 'zoom-blur') a = Math.max(a, 0.3 * prog(t, pg.tA - 0.12, 0.12) * (t < pg.tA ? 1 : 0), 0.35 * (1 - oCub(prog(t, pg.tA, 0.22))) * (t >= pg.tA ? 1 : 0));
+  return a;
+}
+function drawFrame(t) {
+  drawWorld(t);
+  const amt = zoomBlurAmount(t);
+  if (amt > 0.002) {
+    tctx.setTransform(1, 0, 0, 1, 0, 0); tctx.clearRect(0, 0, W, H); tctx.drawImage(sc, 0, 0);
+    ctx.setTransform(1, 0, 0, 1, 0, 0); if (ALPHA) ctx.clearRect(0, 0, W, H);
+    for (let i = 0, N = 7; i < N; i++) { const s = 1 + amt * i / (N - 1);
+      ctx.save(); ctx.globalAlpha = i === 0 ? 1 : 1 / (i + 1); ctx.translate(W / 2, H / 2); ctx.scale(s, s); ctx.translate(-W / 2, -H / 2); ctx.drawImage(tmp, 0, 0); ctx.restore(); }
+  }
+}
+
+// ONE motion blur: the 180-degree shutter is the average of SUBS sub-frames. Nothing else blurs a travel.
+window.seek = function (t) {
+  t = clamp(t, 0, DUR - 1e-6);
+  out.setTransform(1, 0, 0, 1, 0, 0); out.clearRect(0, 0, W, H);
+  for (let i = 0; i < SUBS; i++) {
+    drawFrame(t + (i / SUBS) * SHUTTER);
+    if (ALPHA) { out.globalCompositeOperation = 'lighter'; out.globalAlpha = 1 / SUBS; }   // exact premultiplied average
+    else { out.globalCompositeOperation = 'source-over'; out.globalAlpha = 1 / (i + 1); }
+    out.drawImage(sc, 0, 0);
+  }
+  out.globalAlpha = 1; out.globalCompositeOperation = 'source-over';
+};
+
+(async () => {
+  const get = async f => (await fetch(f)).json();
+  CJ = await get('client.json'); const spec = await get('paginas.json');
+  try { WORDS = await get('words.json'); } catch (e) { console.error('words.json missing: run tools/codigo.py palavras'); }
+  [W, H] = spec.formato || CJ.frame || [1080, 1920]; FPS = +Q.get('fps') || spec.fps || 60; SHUTTER = 0.5 / FPS;
+  for (const c of [cv, sc, tmp]) { c.width = W; c.height = H; }
+  P = palette(CJ.colors);
+  R = Object.assign({ entrada_s: 0.8, novo_a_cada_s: 3, viagem_s: 0.6, fim_s: 0.8 }, CJ.ritmo || {});
+  G = Object.assign({ margem: 0.08, alinhamento: 'esquerda', sublinhado: false, etiqueta_maiusculas: true }, CJ.grade || {});
+  await loadFonts(CJ.fonts); await document.fonts.ready;
+  resolve(spec);
+  window.FILM = { w: W, h: H, dur: DUR, fps: FPS };
+  window.TIMELINE = TL;
+  window.seek(Q.has('t') ? +Q.get('t') : 0);
+  window.__ready = true;
+  if (!RENDER) {
+    const au = new Audio('audio/score.wav');
+    cv.onclick = () => { au.paused ? au.play() : au.pause(); };
+    const loop = () => { if (!au.paused) window.seek(au.currentTime); requestAnimationFrame(loop); };   // preview only, never in render mode
+    loop();
+  }
+})();
+</script>
+</body>
+</html>

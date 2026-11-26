@@ -1,0 +1,25 @@
+{
+  "_sobre": "Combinações de skills. Cada passo é o nome de uma skill (ou \"premiere\" para a edição manual). Sem nome de cliente.",
+  "receitas": [
+    {"id": "reels-lote", "titulo": "Reels em lote com legenda animada",
+     "quando": "Vários vídeos curtos do mesmo cliente de uma vez: o custo fixo é dividido.",
+     "passos": ["decupagem", "premiere", "remotion-captions", "storyboard", "after-handoff"],
+     "pedido": "Decupa estes reels do <slug> em lote (<pastas>) e depois coloca legenda animada palavra por palavra em cada um."},
+    {"id": "imagens-de-apoio", "titulo": "Imagens de apoio no corte",
+     "quando": "O corte está pronto e a fala precisa de imagens nos momentos certos (produtos, lugares, ações citadas).",
+     "passos": ["premiere", "imagens-apoio", "premiere"],
+     "pedido": "Imagens de apoio para o <vídeo> do <slug>: o XML final é <arquivo.xml> e o roteiro está em MATERIAL."},
+    {"id": "abertura", "titulo": "Abertura animada",
+     "quando": "Uma abertura nova no estilo do cliente, montada com blocos prontos e entregue no After.",
+     "passos": ["storyboard", "hyperframes-registry", "after-handoff"],
+     "pedido": "Quero uma abertura animada de 6 s para o <slug>: planeja no storyboard, usa blocos do registry e entrega no After."},
+    {"id": "estilo-de-referencia", "titulo": "Estilo a partir de um vídeo de referência",
+     "quando": "O cliente mandou um vídeo de que gosta muito e quer algo parecido.",
+     "passos": ["reverse-any-video", "motion-refs"],
+     "pedido": "Desmonta este vídeo de referência (<arquivo.mp4>) e grava no STYLE.md do <slug> o que dá para usar."},
+    {"id": "episodio-fechado", "titulo": "Episódio fechado",
+     "quando": "O editor terminou: aprender com os arquivos finais antes do próximo episódio.",
+     "passos": ["estudo-final", "motion-refs"],
+     "pedido": "O <episódio> foi finalizado: o Premiere é <projeto>, sequência <nome>; o After é <arquivo>."}
+  ]
+}

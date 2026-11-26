@@ -1,0 +1,16 @@
+{
+  "after_effects": "C:/Program Files/Adobe/Adobe After Effects 2026/Support Files/AfterFX.exe",
+  "clients": {
+    "cliente-exemplo": "D:/Trabalho/Clientes/Cliente Exemplo/motion",
+    "outro-cliente": {
+      "dir": "D:/Trabalho/Clientes/Outro/motion",
+      "projects": "E:/Projetos/Outro"
+    }
+  },
+  "keys": {
+    "magnific": "",
+    "pexels": "",
+    "pixabay": "",
+    "magnific_daily": 100
+  }
+}
